@@ -10,6 +10,7 @@ import {
   Building2,
   Menu,
   X,
+  BarChart3,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/fund-returns', icon: TrendingUp, label: 'Fund Returns' },
   { to: '/underwriting', icon: FileText, label: 'Underwriting' },
   { to: '/map', icon: Map, label: 'Map' },
+  { to: '/market-analysis', icon: BarChart3, label: 'Market Analysis' },
   { to: '/gp-portfolio', icon: Users, label: 'GP Portfolio' },
   { to: '/regulations', icon: FileCheck, label: 'Regulations' },
   { to: '/grants', icon: Gift, label: 'Grants' },
