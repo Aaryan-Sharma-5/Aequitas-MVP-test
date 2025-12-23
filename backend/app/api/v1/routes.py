@@ -4,11 +4,15 @@ import json
 
 from pathlib import Path
 from app.services.census_service import CensusService
+from app.services.fred_service import FREDService
 
 api_v1 = Blueprint('api_v1', __name__)
 
 # Initialize Census service (will be created on first request)
 _census_service = None
+
+# Initialize FRED service (will be created on first request)
+_fred_service = None
 
 
 def get_census_service():
@@ -22,6 +26,21 @@ def get_census_service():
             cache_ttl=current_app.config.get('CENSUS_CACHE_TTL', 86400)
         )
     return _census_service
+
+
+def get_fred_service():
+    """Get or create FRED service instance."""
+    global _fred_service
+    if _fred_service is None:
+        api_key = current_app.config.get('FRED_API_KEY', '')
+        if not api_key:
+            raise ValueError("FRED_API_KEY is required in configuration")
+        _fred_service = FREDService(
+            api_key=api_key,
+            base_url=current_app.config.get('FRED_API_BASE_URL', 'https://api.stlouisfed.org/fred'),
+            cache_ttl=current_app.config.get('FRED_CACHE_TTL', 3600)
+        )
+    return _fred_service
 
 @api_v1.route('/ping', methods=['GET'])
 def ping():
@@ -271,6 +290,258 @@ def calculate_ami():
             'error': str(e),
             'code': 'INVALID_INPUT'
         }), 400
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+# ============================================================================
+# FRED API Routes - Macroeconomic and Interest Rate Data
+# ============================================================================
+
+@api_v1.route('/fred/macro', methods=['GET'])
+def get_macro_snapshot():
+    """
+    Get comprehensive macroeconomic snapshot.
+
+    Returns:
+        JSON response with current interest rates, inflation, housing market,
+        and economic indicators
+    """
+    try:
+        fred_service = get_fred_service()
+        macro_data = fred_service.get_macroeconomic_snapshot()
+
+        if macro_data is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch macroeconomic data from FRED',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': macro_data.to_dict()
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/fred/rates', methods=['GET'])
+def get_interest_rates():
+    """
+    Get current interest rates only.
+
+    Returns:
+        JSON response with federal funds rate, mortgage rates, and treasury rates
+    """
+    try:
+        fred_service = get_fred_service()
+        macro_data = fred_service.get_macroeconomic_snapshot()
+
+        if macro_data is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch interest rate data from FRED',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': macro_data.interest_rates.to_dict(),
+            'lastUpdated': macro_data.last_updated
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/fred/mortgage-rates', methods=['GET'])
+def get_mortgage_rates_history():
+    """
+    Get historical mortgage rate data.
+
+    Query Parameters:
+        months: Number of months of history (default: 12, max: 60)
+
+    Returns:
+        JSON response with time series of 30-year mortgage rates
+    """
+    try:
+        months = request.args.get('months', default=12, type=int)
+
+        # Limit to reasonable range
+        if months < 1 or months > 60:
+            return jsonify({
+                'success': False,
+                'error': 'months must be between 1 and 60',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        fred_service = get_fred_service()
+        history = fred_service.get_mortgage_rates_history(months=months)
+
+        if history is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch mortgage rate history from FRED',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': [point.to_dict() for point in history],
+            'months': months
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/fred/series/<series_id>', methods=['GET'])
+def get_series_data(series_id):
+    """
+    Get time series data for a specific FRED series.
+
+    Path Parameters:
+        series_id: FRED series ID (e.g., 'MORTGAGE30US', 'FEDFUNDS')
+
+    Query Parameters:
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        limit: Maximum number of observations (default: 100, max: 1000)
+
+    Returns:
+        JSON response with time series data
+    """
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        limit = request.args.get('limit', default=100, type=int)
+
+        # Validate limit
+        if limit < 1 or limit > 1000:
+            return jsonify({
+                'success': False,
+                'error': 'limit must be between 1 and 1000',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        # Validate series_id format (alphanumeric and some special chars)
+        if not series_id or not all(c.isalnum() or c in ['_', '-'] for c in series_id):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid series_id format',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        fred_service = get_fred_service()
+        time_series = fred_service.get_time_series(
+            series_id=series_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit
+        )
+
+        if time_series is None:
+            return jsonify({
+                'success': False,
+                'error': f'Unable to fetch data for series {series_id}',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'seriesId': series_id,
+            'data': [point.to_dict() for point in time_series],
+            'count': len(time_series)
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/fred/housing-market', methods=['GET'])
+def get_housing_market():
+    """
+    Get current housing market indicators.
+
+    Returns:
+        JSON response with housing starts, building permits, home sales,
+        and Case-Shiller index
+    """
+    try:
+        fred_service = get_fred_service()
+        macro_data = fred_service.get_macroeconomic_snapshot()
+
+        if macro_data is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch housing market data from FRED',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': macro_data.housing_market.to_dict(),
+            'lastUpdated': macro_data.last_updated
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
 
     except Exception as e:
         return jsonify({
