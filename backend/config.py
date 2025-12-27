@@ -20,5 +20,9 @@ class Config:
     FRED_API_BASE_URL = os.getenv('FRED_API_BASE_URL', 'https://api.stlouisfed.org/fred')
     FRED_CACHE_TTL = int(os.getenv('FRED_CACHE_TTL', '3600'))
 
+    # RentCast Property Data API Configuration
+    RENTCAST_API_KEY = os.getenv('RENTCAST_API_KEY', '')
+    RENTCAST_CACHE_TTL = int(os.getenv('RENTCAST_CACHE_TTL', '604800'))
+
     # Frontend URL for CORS
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')

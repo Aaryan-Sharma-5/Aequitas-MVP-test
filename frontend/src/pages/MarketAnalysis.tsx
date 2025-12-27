@@ -1,6 +1,17 @@
 import { useState } from 'react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import { censusApi } from '../services/censusApi';
+import { rentcastApi } from '../services/rentcastApi';
 import type { DemographicData } from '../types/census';
+import type { MarketStatistics, MarketTrend } from '../types/rentcast';
 
 export default function MarketAnalysis() {
   const [zipcode, setZipcode] = useState('');
@@ -10,6 +21,11 @@ export default function MarketAnalysis() {
   const [amiPercent, setAmiPercent] = useState<30 | 50 | 60 | 80>(60);
   const [bedrooms, setBedrooms] = useState(2);
   const [amiResult, setAmiResult] = useState<any>(null);
+
+  // RentCast State
+  const [marketStats, setMarketStats] = useState<MarketStatistics | null>(null);
+  const [marketTrends, setMarketTrends] = useState<MarketTrend[]>([]);
+  const [loadingRentCast, setLoadingRentCast] = useState(false);
 
   const handleSearch = async () => {
     if (!zipcode || zipcode.length !== 5) {
@@ -21,6 +37,8 @@ export default function MarketAnalysis() {
     setError(null);
     setDemographics(null);
     setAmiResult(null);
+    setMarketStats(null);
+    setMarketTrends([]);
 
     try {
       const response = await censusApi.getDemographics(zipcode);
@@ -30,8 +48,26 @@ export default function MarketAnalysis() {
       } else {
         setError(response.error || 'Failed to fetch demographic data');
       }
+
+      // Fetch RentCast data in parallel
+      setLoadingRentCast(true);
+      const [statsResponse, trendsResponse] = await Promise.all([
+        rentcastApi.getMarketStats(zipcode),
+        rentcastApi.getMarketTrends(zipcode, 12)
+      ]);
+
+      if (statsResponse.success && statsResponse.data) {
+        setMarketStats(statsResponse.data);
+      }
+
+      if (trendsResponse.success && trendsResponse.data) {
+        setMarketTrends(trendsResponse.data);
+      }
+
+      setLoadingRentCast(false);
     } catch (err) {
       setError('An unexpected error occurred');
+      setLoadingRentCast(false);
     } finally {
       setLoading(false);
     }
@@ -242,6 +278,108 @@ export default function MarketAnalysis() {
               </div>
             </div>
           </div>
+
+          {/* Rental Market Intelligence */}
+          {marketStats && !loadingRentCast && (
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h2 className="text-xl font-semibold mb-4">
+                Rental Market Intelligence
+                <span className="text-sm font-normal text-gray-500 ml-2">(RentCast)</span>
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Average Rent</p>
+                  <p className="text-xl font-bold text-purple-900">
+                    {marketStats.avgRentAll ? formatCurrency(marketStats.avgRentAll) : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-indigo-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Median Rent</p>
+                  <p className="text-xl font-bold text-indigo-900">
+                    {marketStats.medianRentAll ? formatCurrency(marketStats.medianRentAll) : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Total Listings</p>
+                  <p className="text-xl font-bold text-blue-900">
+                    {marketStats.totalListings ? formatNumber(marketStats.totalListings) : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-cyan-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Days on Market</p>
+                  <p className="text-xl font-bold text-cyan-900">
+                    {marketStats.avgDaysOnMarket || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-semibold mb-3">Rent by Bedrooms</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-600">1 Bed</p>
+                  <p className="text-lg font-semibold">
+                    {marketStats.avgRent1bed ? formatCurrency(marketStats.avgRent1bed) : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-600">2 Bed</p>
+                  <p className="text-lg font-semibold">
+                    {marketStats.avgRent2bed ? formatCurrency(marketStats.avgRent2bed) : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-600">3 Bed</p>
+                  <p className="text-lg font-semibold">
+                    {marketStats.avgRent3bed ? formatCurrency(marketStats.avgRent3bed) : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-600">4+ Bed</p>
+                  <p className="text-lg font-semibold">
+                    {marketStats.avgRent4bed ? formatCurrency(marketStats.avgRent4bed) : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rental Trends Chart */}
+          {marketTrends.length > 0 && !loadingRentCast && (
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h2 className="text-xl font-semibold mb-4">Rental Trends (12 Months)</h2>
+
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={marketTrends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    }}
+                  />
+                  <YAxis
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Avg Rent']}
+                    labelFormatter={(label) => {
+                      const date = new Date(label);
+                      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avgRent"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Employment */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">

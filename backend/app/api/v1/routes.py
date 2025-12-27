@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from app.services.census_service import CensusService
 from app.services.fred_service import FREDService
+from app.services.rentcast_service import RentCastService
 
 api_v1 = Blueprint('api_v1', __name__)
 
@@ -14,6 +15,9 @@ _census_service = None
 
 # Initialize FRED service (will be created on first request)
 _fred_service = None
+
+# Initialize RentCast service (will be created on first request)
+_rentcast_service = None
 
 
 def get_census_service():
@@ -39,6 +43,17 @@ def get_fred_service():
             cache_ttl=current_app.config.get('FRED_CACHE_TTL', 3600)
         )
     return _fred_service
+
+
+def get_rentcast_service():
+    """Get or create RentCast service instance."""
+    global _rentcast_service
+    if _rentcast_service is None:
+        _rentcast_service = RentCastService(
+            api_key=current_app.config.get('RENTCAST_API_KEY', ''),
+            cache_ttl=current_app.config.get('RENTCAST_CACHE_TTL', 604800)
+        )
+    return _rentcast_service
 
 @api_v1.route('/ping', methods=['GET'])
 def ping():
@@ -610,3 +625,363 @@ def get_fred_series(series_id):
             'error': 'Internal server error',
             'code': 'SERVER_ERROR'
         }), 500
+
+
+# ==================== RentCast API Routes ====================
+
+@api_v1.route('/rentcast/rent-estimate', methods=['GET'])
+def get_rentcast_rent_estimate():
+    """
+    Get rent estimate for a property.
+
+    Query Parameters:
+        address: Full property address (optional)
+        zipcode: 5-digit ZIP code (optional)
+        bedrooms: Number of bedrooms (optional)
+        bathrooms: Number of bathrooms (optional)
+        squareFootage: Square footage (optional)
+
+    Returns:
+        JSON response with rent estimate data
+    """
+    try:
+        # Get query parameters
+        address = request.args.get('address')
+        zipcode = request.args.get('zipcode')
+        bedrooms = request.args.get('bedrooms', type=int)
+        bathrooms = request.args.get('bathrooms', type=float)
+        square_footage = request.args.get('squareFootage', type=int)
+
+        # Validate input
+        if not address and not zipcode:
+            return jsonify({
+                'success': False,
+                'error': 'Either address or zipcode is required',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        rentcast_service = get_rentcast_service()
+        rent_estimate = rentcast_service.get_rent_estimate(
+            address=address,
+            zipcode=zipcode,
+            bedrooms=bedrooms,
+            bathrooms=bathrooms,
+            square_footage=square_footage
+        )
+
+        if rent_estimate is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch rent estimate',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': rent_estimate.to_dict(),
+            'lastUpdated': datetime.now().isoformat()
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/rentcast/comparables', methods=['GET'])
+def get_rentcast_comparables():
+    """
+    Get rental comparable properties.
+
+    Query Parameters:
+        address: Full property address (optional)
+        zipcode: 5-digit ZIP code (optional)
+        bedrooms: Number of bedrooms (optional)
+        bathrooms: Number of bathrooms (optional)
+        compCount: Number of comparables (1-25, default 10)
+        maxRadius: Maximum search radius in miles (default 5.0)
+
+    Returns:
+        JSON response with rental comparables
+    """
+    try:
+        # Get query parameters
+        address = request.args.get('address')
+        zipcode = request.args.get('zipcode')
+        bedrooms = request.args.get('bedrooms', type=int)
+        bathrooms = request.args.get('bathrooms', type=float)
+        comp_count = request.args.get('compCount', 10, type=int)
+        max_radius = request.args.get('maxRadius', 5.0, type=float)
+
+        # Validate input
+        if not address and not zipcode:
+            return jsonify({
+                'success': False,
+                'error': 'Either address or zipcode is required',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        # Validate comp_count
+        if comp_count < 1 or comp_count > 25:
+            return jsonify({
+                'success': False,
+                'error': 'compCount must be between 1 and 25',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        rentcast_service = get_rentcast_service()
+        comparables = rentcast_service.get_rental_comparables(
+            address=address,
+            zipcode=zipcode,
+            bedrooms=bedrooms,
+            bathrooms=bathrooms,
+            comp_count=comp_count,
+            max_radius=max_radius
+        )
+
+        if comparables is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch rental comparables',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': [comp.to_dict() for comp in comparables],
+            'count': len(comparables)
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/rentcast/market-stats', methods=['GET'])
+def get_rentcast_market_stats():
+    """
+    Get market statistics for a ZIP code.
+
+    Query Parameters:
+        zipcode: 5-digit ZIP code (required)
+        dataType: Data type ('Rental', 'Sale', or 'All', default 'Rental')
+
+    Returns:
+        JSON response with market statistics
+    """
+    try:
+        # Get query parameters
+        zipcode = request.args.get('zipcode')
+        data_type = request.args.get('dataType', 'Rental')
+
+        # Validate input
+        if not zipcode:
+            return jsonify({
+                'success': False,
+                'error': 'zipcode is required',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        if len(zipcode) != 5:
+            return jsonify({
+                'success': False,
+                'error': 'zipcode must be 5 digits',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        rentcast_service = get_rentcast_service()
+        market_stats = rentcast_service.get_market_statistics(
+            zipcode=zipcode,
+            data_type=data_type
+        )
+
+        if market_stats is None:
+            return jsonify({
+                'success': False,
+                'error': f'Unable to fetch market statistics for ZIP code {zipcode}',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': market_stats.to_dict(),
+            'lastUpdated': datetime.now().isoformat()
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/rentcast/market-trends', methods=['GET'])
+def get_rentcast_market_trends():
+    """
+    Get historical market trends for a ZIP code.
+
+    Query Parameters:
+        zipcode: 5-digit ZIP code (required)
+        months: Number of months of history (1-24, default 12)
+        dataType: Data type ('Rental', 'Sale', or 'All', default 'Rental')
+
+    Returns:
+        JSON response with market trend time series
+    """
+    try:
+        # Get query parameters
+        zipcode = request.args.get('zipcode')
+        months = request.args.get('months', 12, type=int)
+        data_type = request.args.get('dataType', 'Rental')
+
+        # Validate input
+        if not zipcode:
+            return jsonify({
+                'success': False,
+                'error': 'zipcode is required',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        if len(zipcode) != 5:
+            return jsonify({
+                'success': False,
+                'error': 'zipcode must be 5 digits',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        if months < 1 or months > 24:
+            return jsonify({
+                'success': False,
+                'error': 'months must be between 1 and 24',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        rentcast_service = get_rentcast_service()
+        market_trends = rentcast_service.get_market_trends(
+            zipcode=zipcode,
+            months=months,
+            data_type=data_type
+        )
+
+        if market_trends is None:
+            return jsonify({
+                'success': False,
+                'error': f'Unable to fetch market trends for ZIP code {zipcode}',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': [trend.to_dict() for trend in market_trends],
+            'months': months
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+@api_v1.route('/rentcast/property-valuation', methods=['GET'])
+def get_rentcast_property_valuation():
+    """
+    Get complete property valuation (estimate + comparables + market stats).
+
+    Query Parameters:
+        address: Full property address (optional)
+        zipcode: 5-digit ZIP code (optional)
+        bedrooms: Number of bedrooms (optional)
+        bathrooms: Number of bathrooms (optional)
+        squareFootage: Square footage (optional)
+
+    Returns:
+        JSON response with complete property valuation
+    """
+    try:
+        # Get query parameters
+        address = request.args.get('address')
+        zipcode = request.args.get('zipcode')
+        bedrooms = request.args.get('bedrooms', type=int)
+        bathrooms = request.args.get('bathrooms', type=float)
+        square_footage = request.args.get('squareFootage', type=int)
+
+        # Validate input
+        if not address and not zipcode:
+            return jsonify({
+                'success': False,
+                'error': 'Either address or zipcode is required',
+                'code': 'INVALID_INPUT'
+            }), 400
+
+        rentcast_service = get_rentcast_service()
+        valuation = rentcast_service.get_property_valuation(
+            address=address,
+            zipcode=zipcode,
+            bedrooms=bedrooms,
+            bathrooms=bathrooms,
+            square_footage=square_footage
+        )
+
+        if valuation is None:
+            return jsonify({
+                'success': False,
+                'error': 'Unable to fetch property valuation',
+                'code': 'NO_DATA'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': valuation.to_dict(),
+            'lastUpdated': datetime.now().isoformat()
+        })
+
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'code': 'CONFIGURATION_ERROR'
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'code': 'SERVER_ERROR'
+        }), 500
+

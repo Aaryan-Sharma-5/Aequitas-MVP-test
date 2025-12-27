@@ -10,6 +10,8 @@ import {
 } from 'recharts';
 import { FileText, Download, AlertCircle, ChevronDown, TrendingUp } from 'lucide-react';
 import { fredApi } from '../services/fredApi';
+import { rentcastApi } from '../services/rentcastApi';
+import type { RentEstimateData, RentalComparable } from '../types/rentcast';
 
 // --- FINANCIAL CALCULATION UTILITIES ---
 const calculatePMT = (rate: number, nper: number, pv: number) => {
@@ -74,6 +76,12 @@ const Underwriting = () => {
   const [rateLastUpdated, setRateLastUpdated] = useState<string>('');
   const [loadingRates, setLoadingRates] = useState(true);
 
+  // RentCast API State
+  const [rentEstimate, setRentEstimate] = useState<RentEstimateData | null>(null);
+  const [loadingRentEstimate, setLoadingRentEstimate] = useState(false);
+  const [showComparables, setShowComparables] = useState(false);
+  const [comparables, setComparables] = useState<RentalComparable[]>([]);
+
   // Fetch current mortgage rates on mount
   useEffect(() => {
     async function fetchCurrentRates() {
@@ -92,6 +100,47 @@ const Underwriting = () => {
     }
     fetchCurrentRates();
   }, []);
+
+  // Fetch rent estimate when location changes
+  useEffect(() => {
+    async function fetchRentEstimate() {
+      if (!location) return;
+
+      setLoadingRentEstimate(true);
+      try {
+        // Extract ZIP code from location if possible, or use the full location
+        const response = await rentcastApi.getRentEstimate({
+          address: location,
+          bedrooms: 2, // Default assumption for market estimate
+        });
+
+        if (response.success && response.data) {
+          setRentEstimate(response.data);
+          // Optionally auto-populate rent if user hasn't changed it from default
+          if (avgMonthlyRent === 1200 && response.data.estimatedRent) {
+            setAvgMonthlyRent(Math.round(response.data.estimatedRent));
+          }
+        }
+
+        // Also fetch comparables
+        const compsResponse = await rentcastApi.getComparables({
+          address: location,
+          bedrooms: 2,
+          compCount: 10,
+        });
+
+        if (compsResponse.success && compsResponse.data) {
+          setComparables(compsResponse.data);
+        }
+      } catch (error) {
+        console.error('Error fetching RentCast data:', error);
+      } finally {
+        setLoadingRentEstimate(false);
+      }
+    }
+
+    fetchRentEstimate();
+  }, [location]); // Only re-fetch when location changes
 
   // CALCULATIONS (Memoized for performance)
   const metrics = useMemo(() => {
@@ -231,13 +280,50 @@ const Underwriting = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Average Monthly Rent ($)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-gray-600">
+                  Average Monthly Rent ($)
+                </label>
+                {rentEstimate && !loadingRentEstimate && rentEstimate.estimatedRent && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <TrendingUp size={12} />
+                      RentCast: ${Math.round(rentEstimate.estimatedRent).toLocaleString()}
+                    </span>
+                    <button
+                      onClick={() => setAvgMonthlyRent(Math.round(rentEstimate.estimatedRent!))}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium underline"
+                      title="Use RentCast market estimate"
+                    >
+                      Use
+                    </button>
+                    {comparables.length > 0 && (
+                      <button
+                        onClick={() => setShowComparables(!showComparables)}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium underline"
+                      >
+                        {showComparables ? 'Hide' : 'View'} Comps
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <input
                 type="number"
                 value={avgMonthlyRent}
                 onChange={(e) => setAvgMonthlyRent(Number(e.target.value) || 0)}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               />
+              {rentEstimate && !loadingRentEstimate && rentEstimate.estimatedRent && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Range: ${Math.round(rentEstimate.rentRangeLow || 0).toLocaleString()} -
+                  ${Math.round(rentEstimate.rentRangeHigh || 0).toLocaleString()}
+                  {rentEstimate.lastUpdated && ` • Updated: ${new Date(rentEstimate.lastUpdated).toLocaleDateString()}`}
+                </p>
+              )}
+              {loadingRentEstimate && (
+                <p className="text-xs text-gray-400 mt-1">Loading market estimate...</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Operating Expense Ratio (%)</label>
@@ -361,6 +447,67 @@ const Underwriting = () => {
             </div>
           </div>
         </div>
+
+        {/* Rental Comparables Section */}
+        {showComparables && comparables.length > 0 && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Rental Comparables
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  ({comparables.length} properties)
+                </span>
+              </h3>
+              <button
+                onClick={() => setShowComparables(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {comparables.slice(0, 8).map((comp, index) => (
+                <div
+                  key={index}
+                  className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{comp.address}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {comp.bedrooms && `${comp.bedrooms} bed`}
+                        {comp.bathrooms && ` • ${comp.bathrooms} bath`}
+                        {comp.squareFootage && ` • ${comp.squareFootage.toLocaleString()} sqft`}
+                        {comp.distanceMiles && ` • ${comp.distanceMiles.toFixed(2)} mi away`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      {comp.listedRent && (
+                        <>
+                          <p className="text-lg font-bold text-blue-600">
+                            ${comp.listedRent.toLocaleString()}/mo
+                          </p>
+                          {comp.pricePerSqft && (
+                            <p className="text-xs text-gray-500">
+                              ${comp.pricePerSqft.toFixed(2)}/sqft
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {comparables.length > 8 && (
+              <p className="text-xs text-gray-500 mt-4 text-center">
+                Showing 8 of {comparables.length} comparables
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
