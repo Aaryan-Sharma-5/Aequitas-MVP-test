@@ -4,9 +4,7 @@
 
 import type {
   RentEstimateData,
-  RentalComparable,
   MarketStatistics,
-  MarketTrend,
   PropertyValuation,
   RentCastResponse,
   RentCastComparablesResponse,

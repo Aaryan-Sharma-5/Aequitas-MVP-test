@@ -155,9 +155,14 @@ class RentCastService:
         Returns:
             List of RentalComparable objects or None if error
         """
-        # Validate input
-        if not address and not zipcode:
-            raise ValueError("Either address or zipcode is required")
+        # Validate input - require address for RentCast API
+        if not address:
+            # If only zipcode is provided, construct a generic address
+            if zipcode:
+                # Use center of zipcode as a reference point
+                address = f"{zipcode}, USA"
+            else:
+                raise ValueError("Address is required for comparables")
 
         # Validate comp_count
         comp_count = max(1, min(comp_count, 25))
@@ -172,12 +177,9 @@ class RentCastService:
             # Build request parameters
             params = {
                 'compCount': comp_count,
-                'radius': max_radius
+                'radius': max_radius,
+                'address': address
             }
-            if address:
-                params['address'] = address
-            if zipcode:
-                params['zipCode'] = zipcode
             if bedrooms is not None:
                 params['bedrooms'] = bedrooms
             if bathrooms is not None:
@@ -187,7 +189,12 @@ class RentCastService:
             endpoint = f"{self.BASE_URL}/avm/rent/long-term"
             data = self._make_request(endpoint, params)
 
-            if not data or 'comparables' not in data:
+            if not data:
+                print(f"No data returned from RentCast API for address: {address}")
+                return None
+
+            if 'comparables' not in data:
+                print(f"No comparables in response for address: {address}")
                 return None
 
             # Parse comparables
@@ -205,7 +212,7 @@ class RentCastService:
                     self.cache_ttl
                 )
 
-            return comparables
+            return comparables if comparables else None
 
         except Exception as e:
             print(f"Error fetching rental comparables: {str(e)}")
