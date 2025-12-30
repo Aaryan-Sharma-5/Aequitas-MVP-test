@@ -1,0 +1,220 @@
+{
+  "rent_control": {
+    "states_with_rent_control": ["CA", "NY", "OR", "DC", "NJ", "MD"],
+    "states_prohibiting_rent_control": [
+      "AL", "AK", "AZ", "AR", "CO", "FL", "GA", "ID", "IL", "IN", "IA", "KS",
+      "KY", "LA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NM", "NC",
+      "ND", "OH", "OK", "PA", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+    ],
+
+    "cities_with_rent_control": [
+      "San Francisco, CA",
+      "Oakland, CA",
+      "Berkeley, CA",
+      "Los Angeles, CA",
+      "San Jose, CA",
+      "Santa Monica, CA",
+      "West Hollywood, CA",
+      "New York City, NY",
+      "Albany, NY",
+      "Portland, OR",
+      "Washington, DC"
+    ],
+
+    "notes": "States prohibiting rent control have state preemption laws preventing local ordinances. Last updated: 2024"
+  },
+
+  "renter_protection_score": {
+    "description": "RPS Score (0-5): Composite measure of tenant protection laws",
+    "components": [
+      "Notice period requirements",
+      "Just cause eviction laws",
+      "Security deposit limits",
+      "Habitability standards",
+      "Lease renewal rights",
+      "Retaliation protections"
+    ],
+
+    "state_scores": {
+      "CA": 3.8,
+      "NY": 3.5,
+      "NJ": 3.2,
+      "OR": 3.2,
+      "DC": 3.4,
+      "MD": 2.8,
+      "MA": 2.9,
+      "WA": 2.7,
+      "IL": 2.5,
+      "NV": 2.3,
+      "CO": 2.2,
+      "FL": 1.8,
+      "TX": 1.2,
+      "GA": 1.3,
+      "AZ": 1.5,
+      "TN": 1.4,
+      "NC": 1.6,
+      "OH": 1.7,
+      "MI": 1.9,
+      "PA": 2.0,
+      "VA": 1.5,
+      "IN": 1.4,
+      "WI": 1.8,
+      "MO": 1.5,
+      "AL": 1.2,
+      "SC": 1.3,
+      "LA": 1.3,
+      "KY": 1.4,
+      "OK": 1.2,
+      "AR": 1.1,
+      "MS": 1.1,
+      "UT": 1.6,
+      "NM": 1.8,
+      "ID": 1.3,
+      "MT": 1.5,
+      "WY": 1.2,
+      "SD": 1.3,
+      "ND": 1.3,
+      "NE": 1.4,
+      "KS": 1.4,
+      "IA": 1.6,
+      "MN": 2.1,
+      "AK": 1.7,
+      "HI": 2.5,
+      "DE": 2.0,
+      "RI": 2.6,
+      "CT": 2.7,
+      "VT": 2.4,
+      "NH": 1.8,
+      "ME": 2.2,
+      "WV": 1.5
+    },
+
+    "interpretation": {
+      "0-1.5": "Very low protection - landlord-friendly",
+      "1.5-2.5": "Low protection - moderate landlord advantage",
+      "2.5-3.5": "Medium protection - balanced regulations",
+      "3.5-5.0": "High protection - tenant-friendly"
+    },
+
+    "last_updated": "2024-12-30"
+  },
+
+  "political_control_2024": {
+    "description": "State government political control affects likelihood of future tenant-friendly legislation",
+
+    "democratic_trifecta": [
+      "CA", "NY", "IL", "MA", "MD", "DE", "NJ", "CT", "RI", "WA", "OR", "CO", "NM", "HI", "MN", "MI"
+    ],
+
+    "republican_trifecta": [
+      "TX", "FL", "GA", "OH", "TN", "SC", "AL", "LA", "MS", "AR", "OK", "MO",
+      "IN", "KY", "WV", "IA", "SD", "ND", "NE", "KS", "MT", "WY", "ID", "UT", "AK"
+    ],
+
+    "divided_government": [
+      "PA", "WI", "NC", "AZ", "NV", "VA", "ME", "NH", "VT"
+    ],
+
+    "notes": "As of 2024 elections. Democratic control correlates with higher probability of tenant-friendly legislation."
+  },
+
+  "policy_uncertainty_index": {
+    "description": "State-level economic policy uncertainty (scale 0-100)",
+
+    "high_uncertainty": {
+      "states": ["CA", "NY", "IL", "NJ"],
+      "score_range": "70-100",
+      "description": "Frequent policy changes, high regulatory activity"
+    },
+
+    "moderate_uncertainty": {
+      "states": ["FL", "TX", "PA", "OH", "GA", "WA", "OR", "CO", "MA"],
+      "score_range": "40-70",
+      "description": "Some policy volatility, moderate regulatory changes"
+    },
+
+    "low_uncertainty": {
+      "states": ["Most other states"],
+      "score_range": "0-40",
+      "description": "Stable policy environment, minimal regulatory changes"
+    },
+
+    "notes": "Based on newspaper coverage analysis of policy-related uncertainty. Higher uncertainty does NOT correlate with lower returns for low-rent properties (research finding)."
+  },
+
+  "ami_rent_limits": {
+    "description": "Area Median Income (AMI) based rent restrictions for affordable housing programs",
+
+    "ami_percentages": {
+      "30": {
+        "typical_income": 24000,
+        "max_rent_percentage": 30,
+        "description": "Extremely low income - public housing eligible"
+      },
+      "50": {
+        "typical_income": 40000,
+        "max_rent_percentage": 30,
+        "description": "Very low income - Section 8 eligible"
+      },
+      "60": {
+        "typical_income": 48000,
+        "max_rent_percentage": 30,
+        "description": "Low income - LIHTC typical target"
+      },
+      "80": {
+        "typical_income": 64000,
+        "max_rent_percentage": 30,
+        "description": "Moderate income - workforce housing target"
+      }
+    },
+
+    "calculation_formula": "Max Rent = (AMI × AMI_Percentage × Max_Rent_Percentage) / 12",
+    "example": "60% AMI in area with $80,000 median: ($80,000 × 0.60 × 0.30) / 12 = $1,200/month max rent",
+
+    "notes": "Varies by MSA. Use Census API to get local AMI for accurate calculations."
+  },
+
+  "eviction_notice_requirements": {
+    "description": "Minimum notice periods for eviction by state (in days)",
+
+    "pay_or_quit": {
+      "3_days": ["CA", "AZ", "NV", "OR", "WA", "CO", "NM", "TX", "FL"],
+      "5_days": ["IL", "IN", "OH", "MI", "WI", "MN"],
+      "7_days": ["NY", "NJ", "PA", "MA", "CT"],
+      "10_days": ["GA", "NC", "SC", "VA"],
+      "14_days": ["MD", "DE"],
+      "30_days": ["OR (new law)", "DC"]
+    },
+
+    "no_fault_eviction": {
+      "30_days": ["Most states for month-to-month"],
+      "60_days": ["CA (>1 year tenancy)", "OR", "WA"],
+      "90_days": ["CA (subsidized housing)", "DC"],
+      "prohibited": ["OR (just cause required)", "CA (just cause in certain cities)"]
+    },
+
+    "notes": "Longer notice periods increase landlord costs but don't significantly impact returns (research finding)"
+  },
+
+  "security_deposit_limits": {
+    "description": "Maximum security deposit allowed by state",
+
+    "one_month_rent": ["CA (unfurnished)", "MA", "NJ", "NY (some cities)"],
+    "one_and_half_months": ["CA (furnished)", "WA", "OR"],
+    "two_months_rent": ["NV", "AZ", "IL", "PA", "MD"],
+    "no_limit": ["TX", "FL", "GA", "AL", "MS", "LA", "OK", "AR", "most other states"],
+
+    "notes": "States with limits also tend to have strict return timelines (14-30 days)"
+  },
+
+  "data_sources": [
+    "National Multifamily Housing Council (NMHC) rent control database",
+    "Urban Institute state renter protection analysis",
+    "Ballotpedia state government composition 2024",
+    "HUD Fair Market Rent and AMI data",
+    "State landlord-tenant law compilations"
+  ],
+
+  "last_comprehensive_update": "2024-12-30",
+  "recommended_update_frequency": "Annual (Q1 each year after state legislative sessions)"
+}

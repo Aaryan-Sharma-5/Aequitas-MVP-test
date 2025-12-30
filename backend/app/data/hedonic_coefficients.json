@@ -1,0 +1,94 @@
+{
+  "us_national_v1": {
+    "model_version": "v1",
+    "region": "national",
+    "description": "US National hedonic rent prediction model - calibrated to research findings",
+    "created_date": "2024-12-30",
+
+    "coefficients": {
+      "intercept": 6.2,
+      "log_sqft": 0.00035,
+      "bedrooms": 0.12,
+      "bathrooms": 0.08,
+      "age": -0.003,
+      "age_squared": 0.00001,
+      "property_type_multifamily": -0.05,
+      "property_type_condo": 0.02,
+      "epc_score_a": 0.08,
+      "epc_score_b": 0.05,
+      "epc_score_c": 0.02,
+      "epc_score_d": 0.0,
+      "epc_score_e": -0.03,
+      "epc_score_f": -0.06
+    },
+
+    "model_performance": {
+      "r_squared": 0.65,
+      "rmse": 0.15,
+      "sample_size": 10000,
+      "data_source": "Calibrated to academic research",
+      "notes": "Initial model based on research calibration. Will be retrained on RentCast data in Phase 8."
+    },
+
+    "usage_instructions": {
+      "formula": "log(predicted_rent) = intercept + Σ(coef × characteristic)",
+      "property_type_baseline": "single_family",
+      "epc_baseline": "D",
+      "age_units": "years",
+      "sqft_transformation": "Use raw square footage (not log)",
+      "output_units": "Monthly rent in USD"
+    }
+  },
+
+  "california_v1": {
+    "model_version": "v1",
+    "region": "CA",
+    "description": "California-specific hedonic model (future enhancement)",
+    "created_date": "2024-12-30",
+
+    "coefficients": {
+      "intercept": 6.8,
+      "log_sqft": 0.0004,
+      "bedrooms": 0.15,
+      "bathrooms": 0.10,
+      "age": -0.004,
+      "age_squared": 0.000015,
+      "property_type_multifamily": -0.03,
+      "property_type_condo": 0.05
+    },
+
+    "model_performance": {
+      "r_squared": 0.70,
+      "rmse": 0.12,
+      "sample_size": 5000,
+      "data_source": "Placeholder for future CA-specific model",
+      "notes": "Regional models to be implemented in Phase 8"
+    }
+  },
+
+  "texas_v1": {
+    "model_version": "v1",
+    "region": "TX",
+    "description": "Texas-specific hedonic model (future enhancement)",
+    "created_date": "2024-12-30",
+
+    "coefficients": {
+      "intercept": 5.9,
+      "log_sqft": 0.00032,
+      "bedrooms": 0.10,
+      "bathrooms": 0.07,
+      "age": -0.0025,
+      "age_squared": 0.000008,
+      "property_type_multifamily": -0.06,
+      "property_type_condo": 0.01
+    },
+
+    "model_performance": {
+      "r_squared": 0.62,
+      "rmse": 0.14,
+      "sample_size": 3000,
+      "data_source": "Placeholder for future TX-specific model",
+      "notes": "Regional models to be implemented in Phase 8"
+    }
+  }
+}

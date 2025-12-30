@@ -727,3 +727,301 @@ class BenchmarkDataModel(db.Model):
             self.industry_benchmark = data['industryBenchmark']
         if 'asOfDate' in data:
             self.as_of_date = dt.fromisoformat(data['asOfDate']).date() if data['asOfDate'] else None
+
+
+# ============================================================================
+# RISK ASSESSMENT MODELS
+# ============================================================================
+
+
+class RiskAssessmentModel(db.Model):
+    """
+    SQLAlchemy model for risk assessments
+    Stores comprehensive risk analysis based on academic research
+    """
+    __tablename__ = 'risk_assessments'
+
+    # Primary Key
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Part 1: Rent Tier Classification
+    predicted_fundamental_rent = Column(Float)
+    rent_decile_national = Column(Integer)  # 1-10
+    rent_decile_regional = Column(Integer)  # 1-10
+    rent_tier_label = Column(String(10))  # 'D1', 'D2', ... 'D10'
+
+    # Part 2: Yield Calculations
+    gross_yield = Column(Float)
+    maintenance_cost_pct = Column(Float)
+    property_tax_pct = Column(Float)
+    turnover_cost_pct = Column(Float)
+    default_cost_pct = Column(Float)
+    management_cost_pct = Column(Float)
+    net_yield = Column(Float)
+
+    # Part 3: Capital Appreciation
+    projected_price_yr1 = Column(Float)
+    projected_price_yr5 = Column(Float)
+    projected_price_yr10 = Column(Float)
+    capital_gain_yield_annual = Column(Float)
+    noi_growth_rate = Column(Float)
+
+    # Part 4: Total Return
+    total_return_unlevered = Column(Float)
+    total_return_levered = Column(Float)
+
+    # Part 5: Risk Metrics
+    systematic_risk_score = Column(Float)
+    cash_flow_cyclicality = Column(String(20))  # 'Low', 'Medium', 'High'
+    regulatory_risk_score = Column(Float)
+    idiosyncratic_risk_score = Column(Float)
+    composite_risk_level = Column(String(20))  # 'Low', 'Medium', 'High'
+
+    # Part 6: Limits to Arbitrage
+    renter_constraint_score = Column(Float)
+    institutional_constraint_score = Column(Float)
+    medium_landlord_constraint_score = Column(Float)
+    arbitrage_opportunity_score = Column(Float)
+
+    # Part 7: Benchmark Comparison
+    benchmark_net_yield_min = Column(Float)
+    benchmark_net_yield_max = Column(Float)
+    benchmark_capital_gain_min = Column(Float)
+    benchmark_capital_gain_max = Column(Float)
+    benchmark_total_return_min = Column(Float)
+    benchmark_total_return_max = Column(Float)
+    vs_benchmark_yield = Column(String(20))  # 'Above', 'Within', 'Below'
+    vs_benchmark_return = Column(String(20))
+
+    # Metadata
+    hedonic_model_version = Column(String(20))
+    last_calculated = Column(DateTime)
+
+    def __repr__(self):
+        return f'<RiskAssessment {self.id}: Deal {self.deal_id} ({self.rent_tier_label})>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'dealId': self.deal_id,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
+
+            # Part 1: Rent Tier Classification
+            'predictedFundamentalRent': self.predicted_fundamental_rent,
+            'rentDecileNational': self.rent_decile_national,
+            'rentDecileRegional': self.rent_decile_regional,
+            'rentTierLabel': self.rent_tier_label,
+
+            # Part 2: Yield Calculations
+            'grossYield': self.gross_yield,
+            'maintenanceCostPct': self.maintenance_cost_pct,
+            'propertyTaxPct': self.property_tax_pct,
+            'turnoverCostPct': self.turnover_cost_pct,
+            'defaultCostPct': self.default_cost_pct,
+            'managementCostPct': self.management_cost_pct,
+            'netYield': self.net_yield,
+
+            # Part 3: Capital Appreciation
+            'projectedPriceYr1': self.projected_price_yr1,
+            'projectedPriceYr5': self.projected_price_yr5,
+            'projectedPriceYr10': self.projected_price_yr10,
+            'capitalGainYieldAnnual': self.capital_gain_yield_annual,
+            'noiGrowthRate': self.noi_growth_rate,
+
+            # Part 4: Total Return
+            'totalReturnUnlevered': self.total_return_unlevered,
+            'totalReturnLevered': self.total_return_levered,
+
+            # Part 5: Risk Metrics
+            'systematicRiskScore': self.systematic_risk_score,
+            'cashFlowCyclicality': self.cash_flow_cyclicality,
+            'regulatoryRiskScore': self.regulatory_risk_score,
+            'idiosyncraticRiskScore': self.idiosyncratic_risk_score,
+            'compositeRiskLevel': self.composite_risk_level,
+
+            # Part 6: Limits to Arbitrage
+            'renterConstraintScore': self.renter_constraint_score,
+            'institutionalConstraintScore': self.institutional_constraint_score,
+            'mediumLandlordConstraintScore': self.medium_landlord_constraint_score,
+            'arbitrageOpportunityScore': self.arbitrage_opportunity_score,
+
+            # Part 7: Benchmark Comparison
+            'benchmarkNetYieldMin': self.benchmark_net_yield_min,
+            'benchmarkNetYieldMax': self.benchmark_net_yield_max,
+            'benchmarkCapitalGainMin': self.benchmark_capital_gain_min,
+            'benchmarkCapitalGainMax': self.benchmark_capital_gain_max,
+            'benchmarkTotalReturnMin': self.benchmark_total_return_min,
+            'benchmarkTotalReturnMax': self.benchmark_total_return_max,
+            'vsBenchmarkYield': self.vs_benchmark_yield,
+            'vsBenchmarkReturn': self.vs_benchmark_return,
+
+            # Metadata
+            'hedonicModelVersion': self.hedonic_model_version,
+            'lastCalculated': self.last_calculated.isoformat() if self.last_calculated else None
+        }
+
+
+class RiskBenchmarkData(db.Model):
+    """
+    SQLAlchemy model for risk assessment benchmark data
+    Stores academic research findings by rent decile
+    """
+    __tablename__ = 'risk_benchmark_data'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    rent_decile = Column(Integer, nullable=False)  # 1-10
+    geography = Column(String(50), nullable=False)  # 'US', 'Belgium', 'Netherlands'
+
+    # Return benchmarks from research
+    net_yield_min = Column(Float)
+    net_yield_max = Column(Float)
+    capital_gain_min = Column(Float)
+    capital_gain_max = Column(Float)
+    total_return_min = Column(Float)
+    total_return_max = Column(Float)
+
+    # Cost structure benchmarks
+    maintenance_cost_pct = Column(Float)
+    turnover_cost_pct = Column(Float)
+    default_cost_pct = Column(Float)
+
+    # Risk metrics benchmarks
+    systematic_risk_beta = Column(Float)
+    cash_flow_volatility = Column(Float)
+
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f'<RiskBenchmark {self.id}: D{self.rent_decile} {self.geography}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'rentDecile': self.rent_decile,
+            'geography': self.geography,
+            'netYieldMin': self.net_yield_min,
+            'netYieldMax': self.net_yield_max,
+            'capitalGainMin': self.capital_gain_min,
+            'capitalGainMax': self.capital_gain_max,
+            'totalReturnMin': self.total_return_min,
+            'totalReturnMax': self.total_return_max,
+            'maintenanceCostPct': self.maintenance_cost_pct,
+            'turnoverCostPct': self.turnover_cost_pct,
+            'defaultCostPct': self.default_cost_pct,
+            'systematicRiskBeta': self.systematic_risk_beta,
+            'cashFlowVolatility': self.cash_flow_volatility,
+            'createdAt': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class HedonicModelCoefficients(db.Model):
+    """
+    SQLAlchemy model for hedonic regression model coefficients
+    Stores parameters for rent prediction model: log(Rent) = β × Characteristics + α
+    """
+    __tablename__ = 'hedonic_coefficients'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    model_version = Column(String(20), nullable=False)
+    region = Column(String(100), nullable=False)  # 'national', state code, or metro area
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    # Property characteristic coefficients
+    coef_sqft = Column(Float)
+    coef_bedrooms = Column(Float)
+    coef_bathrooms = Column(Float)
+    coef_age = Column(Float)
+    coef_property_type_multi = Column(Float)  # Multifamily vs single-family
+    coef_property_type_condo = Column(Float)
+    intercept = Column(Float)
+
+    # Neighborhood and time fixed effects (JSON stored as Text)
+    neighborhood_effects = Column(Text)  # JSON: {zipcode: alpha_value}
+    time_effects = Column(Text)  # JSON: {year: alpha_value}
+
+    # Model performance metrics
+    r_squared = Column(Float)
+    rmse = Column(Float)
+    sample_size = Column(Integer)
+
+    def __repr__(self):
+        return f'<HedonicCoefficients {self.id}: {self.model_version} {self.region}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'modelVersion': self.model_version,
+            'region': self.region,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'coefSqft': self.coef_sqft,
+            'coefBedrooms': self.coef_bedrooms,
+            'coefBathrooms': self.coef_bathrooms,
+            'coefAge': self.coef_age,
+            'coefPropertyTypeMulti': self.coef_property_type_multi,
+            'coefPropertyTypeCondo': self.coef_property_type_condo,
+            'intercept': self.intercept,
+            'neighborhoodEffects': self.neighborhood_effects,
+            'timeEffects': self.time_effects,
+            'rSquared': self.r_squared,
+            'rmse': self.rmse,
+            'sampleSize': self.sample_size
+        }
+
+
+class MarketDecileThresholds(db.Model):
+    """
+    SQLAlchemy model for market rent distribution thresholds
+    Stores rent values that define each decile (D1-D10) in a market
+    """
+    __tablename__ = 'market_decile_thresholds'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    geography = Column(String(100), nullable=False)  # 'national', state, or zipcode
+    bedrooms = Column(Integer)  # Can vary by unit size
+    data_year = Column(Integer, nullable=False)
+
+    # Decile rent thresholds (monthly rent values)
+    d1_threshold = Column(Float)  # Bottom 10%
+    d2_threshold = Column(Float)
+    d3_threshold = Column(Float)
+    d4_threshold = Column(Float)
+    d5_threshold = Column(Float)
+    d6_threshold = Column(Float)
+    d7_threshold = Column(Float)
+    d8_threshold = Column(Float)
+    d9_threshold = Column(Float)
+    d10_threshold = Column(Float)  # Top 10%
+
+    last_updated = Column(DateTime, default=func.now(), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f'<MarketThresholds {self.id}: {self.geography} {self.bedrooms}BR {self.data_year}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'geography': self.geography,
+            'bedrooms': self.bedrooms,
+            'dataYear': self.data_year,
+            'd1Threshold': self.d1_threshold,
+            'd2Threshold': self.d2_threshold,
+            'd3Threshold': self.d3_threshold,
+            'd4Threshold': self.d4_threshold,
+            'd5Threshold': self.d5_threshold,
+            'd6Threshold': self.d6_threshold,
+            'd7Threshold': self.d7_threshold,
+            'd8Threshold': self.d8_threshold,
+            'd9Threshold': self.d9_threshold,
+            'd10Threshold': self.d10_threshold,
+            'lastUpdated': self.last_updated.isoformat() if self.last_updated else None,
+            'createdAt': self.created_at.isoformat() if self.created_at else None
+        }
