@@ -26,3 +26,11 @@ class Config:
 
     # Frontend URL for CORS
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+    # Database Configuration
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        f'sqlite:///{os.path.join(base_dir, "aequitas.db")}'
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = DEBUG

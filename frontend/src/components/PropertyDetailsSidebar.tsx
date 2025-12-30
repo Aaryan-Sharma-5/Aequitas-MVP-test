@@ -1,12 +1,13 @@
-import { X, MapPin, Home, Bed, Bath, Maximize, Calendar, ExternalLink } from 'lucide-react';
+import { X, MapPin, Home, Bed, Bath, Maximize, Calendar, ExternalLink, PlusCircle } from 'lucide-react';
 import type { MapProperty } from '../types/map';
 
 interface PropertyDetailsSidebarProps {
   property: MapProperty | null;
   onClose: () => void;
+  onCreateDeal?: (property: MapProperty) => void;
 }
 
-const PropertyDetailsSidebar = ({ property, onClose }: PropertyDetailsSidebarProps) => {
+const PropertyDetailsSidebar = ({ property, onClose, onCreateDeal }: PropertyDetailsSidebarProps) => {
   if (!property) {
     return (
       <div className="flex flex-col items-center justify-center p-6 py-8 text-center bg-white shadow-sm rounded-xl">
@@ -136,16 +137,41 @@ const PropertyDetailsSidebar = ({ property, onClose }: PropertyDetailsSidebarPro
         )}
 
         {/* Listing Link */}
-        {property.listingUrl && (
-          <a
-            href={property.listingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-white transition-colors bg-blue-500 rounded-lg hover:bg-blue-600"
+        {property.listingUrl && (() => {
+          // Defensive: ensure listingUrl is a valid absolute or relative URL
+          let safeHref = '';
+          try {
+            // new URL will throw for invalid URLs; if it's relative, base on window.location
+            safeHref = new URL(property.listingUrl, window.location.href).href;
+          } catch (err) {
+            // Fallback: don't render the link if URL is malformed
+            // eslint-disable-next-line no-console
+            console.warn('Skipping invalid listingUrl for property', property.id, property.listingUrl, err);
+            return null;
+          }
+
+          return (
+            <a
+              href={safeHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-white transition-colors bg-blue-500 rounded-lg hover:bg-blue-600"
+            >
+              View Full Listing
+              <ExternalLink size={16} />
+            </a>
+          );
+        })()}
+
+        {/* Create Deal Button */}
+        {onCreateDeal && (
+          <button
+            onClick={() => onCreateDeal(property)}
+            className="flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-white transition-colors bg-green-500 rounded-lg hover:bg-green-600"
           >
-            View Full Listing
-            <ExternalLink size={16} />
-          </a>
+            <PlusCircle size={16} />
+            Create Deal from Property
+          </button>
         )}
       </div>
 

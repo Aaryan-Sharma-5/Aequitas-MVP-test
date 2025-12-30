@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
+from app.database import db
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', '.env'))
 
@@ -18,6 +19,13 @@ def create_app(test_config=None):
     else:
         app.config.update(test_config)
 
+    # Initialize database
+    db.init_app(app)
+
+    # Create tables if they don't exist
+    with app.app_context():
+        db.create_all()
+
     # Enable CORS for frontend communication
     CORS(app, resources={
         r"/api/*": {
@@ -32,5 +40,9 @@ def create_app(test_config=None):
     # API blueprints
     from .api.v1.routes import api_v1
     app.register_blueprint(api_v1, url_prefix='/api/v1')
+
+    # Deal management API
+    from .api.v1.deal_routes import deals_bp
+    app.register_blueprint(deals_bp, url_prefix='/api/v1')
 
     return app

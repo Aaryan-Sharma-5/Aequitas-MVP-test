@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Home, DollarSign, MapPin, AlertCircle } from 'lucide-react';
 import PropertyMap from '../components/PropertyMap';
+import ErrorBoundary from '../components/ErrorBoundary';
 import PropertySearchBar from '../components/PropertySearchBar';
 import PropertyDetailsSidebar from '../components/PropertyDetailsSidebar';
+import DealFormModal from '../components/DealFormModal';
 import type { MapProperty, SearchParams, PropertyFilters } from '../types/map';
+import type { DealFormData } from '../types/deal';
 import { geocodingService } from '../services/geocodingService';
 import { rentcastApi } from '../services/rentcastApi';
 import { generatePropertyId, formatPrice, applyFilters } from '../utils/mapHelpers';
+import { dealApi } from '../services/dealApi';
 
 const MapPage = () => {
+  const navigate = useNavigate();
   // Search and filter state
   const [searchParams, setSearchParams] = useState<SearchParams>({
     searchType: 'zipcode',
@@ -26,6 +32,10 @@ const MapPage = () => {
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Deal creation state
+  const [isDealModalOpen, setIsDealModalOpen] = useState(false);
+  const [selectedPropertyForDeal, setSelectedPropertyForDeal] = useState<MapProperty | null>(null);
 
   // Debounce timer ref
   const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -176,6 +186,48 @@ const MapPage = () => {
     setSelectedProperty(null);
   };
 
+  /**
+   * Handle create deal from property
+   */
+  const handleCreateDeal = (property: MapProperty) => {
+    setSelectedPropertyForDeal(property);
+    setIsDealModalOpen(true);
+  };
+
+  /**
+   * Handle deal form submission
+   */
+  const handleDealSubmit = async (dealData: DealFormData) => {
+    try {
+      // Create the deal with initial property data
+      const createdDeal = await dealApi.createDeal({
+        ...dealData,
+        propertyAddress: selectedPropertyForDeal?.address,
+        latitude: selectedPropertyForDeal?.lat,
+        longitude: selectedPropertyForDeal?.lng,
+        monthlyRent: selectedPropertyForDeal?.price,
+        bedrooms: selectedPropertyForDeal?.bedrooms,
+        bathrooms: selectedPropertyForDeal?.bathrooms,
+        squareFootage: selectedPropertyForDeal?.squareFootage,
+        propertyType: selectedPropertyForDeal?.propertyType
+      });
+
+      // Navigate to underwriting page with the created deal
+      navigate(`/underwriting?dealId=${createdDeal.id}`);
+    } catch (err) {
+      console.error('Error creating deal:', err);
+      throw err;
+    }
+  };
+
+  /**
+   * Handle close deal modal
+   */
+  const handleCloseDealModal = () => {
+    setIsDealModalOpen(false);
+    setSelectedPropertyForDeal(null);
+  };
+
   // Initial load
   useEffect(() => {
     fetchProperties();
@@ -247,15 +299,17 @@ const MapPage = () => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Map Container */}
         <div className="flex flex-col overflow-hidden bg-white shadow-sm lg:col-span-2 rounded-xl">
-          <div className="h-[500px] md:h-[600px]">
-            <PropertyMap
-              properties={properties}
-              center={mapCenter}
-              zoom={12}
-              loading={loading}
-              onMarkerClick={handleMarkerClick}
-              selectedPropertyId={selectedProperty?.id}
-            />
+            <div className="h-[500px] md:h-[600px]">
+            <ErrorBoundary>
+              <PropertyMap
+                properties={properties}
+                center={mapCenter}
+                zoom={12}
+                loading={loading}
+                onMarkerClick={handleMarkerClick}
+                selectedPropertyId={selectedProperty?.id}
+              />
+            </ErrorBoundary>
           </div>
 
           {/* Legend */}
@@ -286,6 +340,7 @@ const MapPage = () => {
           <PropertyDetailsSidebar
             property={selectedProperty}
             onClose={handleCloseDetails}
+            onCreateDeal={handleCreateDeal}
           />
 
           {/* Quick Stats */}
@@ -327,6 +382,21 @@ const MapPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Deal Creation Modal */}
+      <DealFormModal
+        isOpen={isDealModalOpen}
+        onClose={handleCloseDealModal}
+        onSubmit={handleDealSubmit}
+        initialData={{
+          dealName: selectedPropertyForDeal?.address ? `Deal - ${selectedPropertyForDeal.address}` : '',
+          location: searchParams.searchValue,
+          status: 'potential',
+          propertyAddress: selectedPropertyForDeal?.address,
+          latitude: selectedPropertyForDeal?.lat,
+          longitude: selectedPropertyForDeal?.lng
+        }}
+      />
     </div>
   );
 };

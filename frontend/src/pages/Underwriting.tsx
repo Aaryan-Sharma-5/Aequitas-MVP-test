@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -8,10 +9,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { FileText, Download, AlertCircle, ChevronDown, TrendingUp } from 'lucide-react';
+import { FileText, Download, AlertCircle, ChevronDown, TrendingUp, Save } from 'lucide-react';
 import { fredApi } from '../services/fredApi';
 import { rentcastApi } from '../services/rentcastApi';
+import { dealApi } from '../services/dealApi';
 import type { RentEstimateData, RentalComparable } from '../types/rentcast';
+import type { Deal } from '../types/deal';
+import DealsListSidebar from '../components/DealsListSidebar';
 
 // --- FINANCIAL CALCULATION UTILITIES ---
 const calculatePMT = (rate: number, nper: number, pv: number) => {
@@ -54,6 +58,13 @@ const gpPartners = [
 ];
 
 const Underwriting = () => {
+  const [searchParams] = useSearchParams();
+
+  // Current Deal State
+  const [currentDealId, setCurrentDealId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
   // Deal Parameters State
   const [dealName, setDealName] = useState('New Development Project');
   const [location, setLocation] = useState('Sacramento, CA');
@@ -142,6 +153,102 @@ const Underwriting = () => {
     fetchRentEstimate();
   }, [location]); // Only re-fetch when location changes
 
+  // Load deal from URL query parameter
+  useEffect(() => {
+    const dealIdParam = searchParams.get('dealId');
+    if (dealIdParam) {
+      const dealId = parseInt(dealIdParam, 10);
+      if (!isNaN(dealId)) {
+        loadDeal(dealId);
+      }
+    }
+  }, [searchParams]);
+
+  /**
+   * Load a deal and populate form fields
+   */
+  const loadDeal = async (dealId: number) => {
+    try {
+      const deal = await dealApi.getDeal(dealId);
+      setCurrentDealId(deal.id!);
+
+      // Populate form fields from deal
+      if (deal.dealName) setDealName(deal.dealName);
+      if (deal.location) setLocation(deal.location);
+      if (deal.purchasePrice) setPurchasePrice(deal.purchasePrice);
+      if (deal.closingCosts) setClosingCosts(deal.closingCosts);
+      if (deal.monthlyRent) setAvgMonthlyRent(deal.monthlyRent);
+      if (deal.loanInterestRate) setInterestRate(deal.loanInterestRate / 100);
+      if (deal.loanTermYears) setLoanTermYears(deal.loanTermYears);
+    } catch (error) {
+      console.error('Error loading deal:', error);
+      alert('Failed to load deal');
+    }
+  };
+
+  /**
+   * Handle deal selection from sidebar
+   */
+  const handleSelectDeal = (deal: Deal) => {
+    if (deal.id) {
+      loadDeal(deal.id);
+    }
+  };
+
+  /**
+   * Save current deal
+   */
+  const handleSaveDeal = async () => {
+    if (!currentDealId) {
+      alert('No deal loaded. Create a deal from the map first.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await dealApi.updateDeal(currentDealId, {
+        dealName,
+        location,
+        purchasePrice,
+        closingCosts,
+        monthlyRent: avgMonthlyRent,
+        loanInterestRate: interestRate * 100,
+        loanTermYears,
+        // Add calculated metrics
+        monthlyPayment: Math.abs(metrics.annualDebtService / 12),
+        npv: metrics.irr,
+        irr: metrics.irr
+      });
+
+      alert('Deal saved successfully!');
+    } catch (error) {
+      console.error('Error saving deal:', error);
+      alert('Failed to save deal');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Export deal to Excel
+   */
+  const handleExportExcel = async () => {
+    if (!currentDealId) {
+      alert('No deal loaded. Please load a deal first.');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      await dealApi.exportDealToExcel(currentDealId, dealName);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Failed to export to Excel');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // CALCULATIONS (Memoized for performance)
   const metrics = useMemo(() => {
     const totalProjectCost = purchasePrice + constructionCost + closingCosts;
@@ -209,15 +316,40 @@ const Underwriting = () => {
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-800">Deal Underwriting</h1>
           <p className="text-sm text-gray-500 mt-1">
             Analyze projected returns and export financial models
+            {currentDealId && <span className="ml-2 text-blue-600 font-medium">• Deal #{currentDealId} loaded</span>}
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors">
-          <Download size={16} />
-          Export Excel Model
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSaveDeal}
+            disabled={!currentDealId || saving}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save size={16} />
+            {saving ? 'Saving...' : 'Save Deal'}
+          </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={!currentDealId || exporting}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={16} />
+            {exporting ? 'Exporting...' : 'Export Excel Model'}
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Deals Sidebar */}
+        <div className="lg:col-span-1">
+          <DealsListSidebar
+            onSelectDeal={handleSelectDeal}
+            activeDealId={currentDealId ?? undefined}
+          />
+        </div>
+
+        {/* Main Content - now takes 3 columns */}
+        <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Deal Parameters */}
         <div className="bg-white rounded-xl p-6 shadow-sm lg:col-span-1">
           <div className="flex items-center gap-2 mb-6">
@@ -595,6 +727,7 @@ const Underwriting = () => {
               ))}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

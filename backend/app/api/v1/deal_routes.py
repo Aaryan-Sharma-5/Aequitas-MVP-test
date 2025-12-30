@@ -1,0 +1,238 @@
+"""
+Deal management API routes
+Provides REST endpoints for CRUD operations on deals
+"""
+from flask import Blueprint, request, jsonify, send_file
+from app.services.deal_service import DealService
+
+deals_bp = Blueprint('deals', __name__)
+
+
+@deals_bp.route('/deals', methods=['GET'])
+def get_deals():
+    """
+    Get all deals with optional status filter
+
+    Query Parameters:
+        status (optional): Filter by status ('potential', 'ongoing', 'completed', 'rejected')
+        limit (optional): Maximum number of deals to return (default 100)
+
+    Returns:
+        JSON response with deals array
+    """
+    try:
+        status = request.args.get('status')
+        limit = request.args.get('limit', 100, type=int)
+
+        deals = DealService.get_all_deals(status=status, limit=limit)
+
+        return jsonify({
+            'deals': [deal.to_dict() for deal in deals]
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@deals_bp.route('/deals', methods=['POST'])
+def create_deal():
+    """
+    Create a new deal
+
+    Request Body:
+        JSON object with deal data (dealName and location are required)
+
+    Returns:
+        JSON response with created deal
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'error': 'Request body is required'
+            }), 400
+
+        deal = DealService.create_deal(data)
+
+        return jsonify({
+            'deal': deal.to_dict()
+        }), 201
+
+    except ValueError as e:
+        return jsonify({
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@deals_bp.route('/deals/<int:deal_id>', methods=['GET'])
+def get_deal(deal_id):
+    """
+    Get a single deal by ID
+
+    Path Parameters:
+        deal_id: ID of the deal to retrieve
+
+    Returns:
+        JSON response with deal data
+    """
+    try:
+        deal = DealService.get_deal(deal_id)
+
+        if not deal:
+            return jsonify({
+                'error': 'Deal not found'
+            }), 404
+
+        return jsonify({
+            'deal': deal.to_dict()
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@deals_bp.route('/deals/<int:deal_id>', methods=['PUT'])
+def update_deal(deal_id):
+    """
+    Update an existing deal
+
+    Path Parameters:
+        deal_id: ID of the deal to update
+
+    Request Body:
+        JSON object with updated deal data
+
+    Returns:
+        JSON response with updated deal
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'error': 'Request body is required'
+            }), 400
+
+        deal = DealService.update_deal(deal_id, data)
+
+        if not deal:
+            return jsonify({
+                'error': 'Deal not found'
+            }), 404
+
+        return jsonify({
+            'deal': deal.to_dict()
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@deals_bp.route('/deals/<int:deal_id>', methods=['DELETE'])
+def delete_deal(deal_id):
+    """
+    Delete a deal
+
+    Path Parameters:
+        deal_id: ID of the deal to delete
+
+    Returns:
+        JSON response with success status
+    """
+    try:
+        success = DealService.delete_deal(deal_id)
+
+        if not success:
+            return jsonify({
+                'error': 'Deal not found'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'message': 'Deal deleted successfully'
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@deals_bp.route('/deals/<int:deal_id>/export', methods=['GET'])
+def export_deal(deal_id):
+    """
+    Export a deal to Excel
+
+    Path Parameters:
+        deal_id: ID of the deal to export
+
+    Returns:
+        Excel file download
+    """
+    try:
+        # Import here to avoid circular dependency
+        from app.services.excel_export_service import ExcelExportService
+
+        deal = DealService.get_deal(deal_id)
+
+        if not deal:
+            return jsonify({
+                'error': 'Deal not found'
+            }), 404
+
+        # Generate Excel file
+        excel_file = ExcelExportService.generate_excel(deal_id)
+
+        if not excel_file:
+            return jsonify({
+                'error': 'Failed to generate Excel file'
+            }), 500
+
+        # Send file as download
+        filename = f"{deal.deal_name.replace(' ', '_')}_financial_model.xlsx"
+        return send_file(
+            excel_file,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@deals_bp.route('/deals/grouped', methods=['GET'])
+def get_deals_grouped():
+    """
+    Get deals grouped by status
+
+    Returns:
+        JSON response with deals grouped by status
+    """
+    try:
+        grouped_deals = DealService.get_deals_by_status_grouped()
+
+        # Convert Deal objects to dicts
+        result = {}
+        for status, deals in grouped_deals.items():
+            result[status] = [deal.to_dict() for deal in deals]
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500

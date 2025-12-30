@@ -42,29 +42,44 @@ const PropertyMap = ({
 
   // Create custom marker icon using Tailwind classes
   const createCustomIcon = (property: MapProperty, isSelected: boolean): DivIcon => {
-    const color = getMarkerColor(property.price, priceStats.average);
+    try {
+      const color = getMarkerColor(property.price, priceStats.average);
 
-    // Map color names to Tailwind classes
-    const colorClasses = {
-      green: 'bg-green-600 hover:bg-green-700',
-      yellow: 'bg-yellow-500 hover:bg-yellow-600',
-      red: 'bg-red-600 hover:bg-red-700'
-    };
+      // Map color names to Tailwind classes
+      const colorClasses = {
+        green: 'bg-green-600 hover:bg-green-700',
+        yellow: 'bg-yellow-500 hover:bg-yellow-600',
+        red: 'bg-red-600 hover:bg-red-700'
+      };
 
-    const bgClass = colorClasses[color as keyof typeof colorClasses] || colorClasses.red;
-    const selectedClass = isSelected ? 'ring-4 ring-blue-400 ring-offset-2' : '';
+      const bgClass = colorClasses[color as keyof typeof colorClasses] || colorClasses.red;
+      const selectedClass = isSelected ? 'ring-4 ring-blue-400 ring-offset-2' : '';
 
-    return new DivIcon({
-      className: 'custom-marker',
-      html: `
-        <div class="${bgClass} ${selectedClass} text-white rounded-full px-2 py-1 text-xs font-bold shadow-lg cursor-pointer transition-all whitespace-nowrap">
-          ${property.priceFormatted}
-        </div>
-      `,
-      iconSize: [80, 32],
-      iconAnchor: [40, 16],
-      popupAnchor: [0, -16]
-    });
+      const safePrice = String(property.priceFormatted || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      return new DivIcon({
+        className: 'custom-marker',
+        html: `
+          <div class="${bgClass} ${selectedClass} text-white rounded-full px-2 py-1 text-xs font-bold shadow-lg cursor-pointer transition-all whitespace-nowrap">
+            ${safePrice}
+          </div>
+        `,
+        iconSize: [80, 32],
+        iconAnchor: [40, 16],
+        popupAnchor: [0, -16]
+      });
+    } catch (err) {
+      // Log and return a minimal fallback to avoid crashing the map
+      // eslint-disable-next-line no-console
+      console.error('Failed to create custom DivIcon for property', property, err);
+      return new DivIcon({
+        className: 'custom-marker',
+        html: `<div class="bg-gray-600 text-white rounded-full px-2 py-1 text-xs font-bold">N/A</div>`,
+        iconSize: [40, 16],
+        iconAnchor: [20, 8],
+        popupAnchor: [0, -8]
+      });
+    }
   };
 
   return (
