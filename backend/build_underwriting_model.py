@@ -134,8 +134,8 @@ def build_assumptions_tab(ws, data=None):
     add_input_row(ws, row, "Acquisition Date", acq_date, "B", num_format='mm/dd/yyyy'); row += 1
 
     add_input_row(ws, row, "Earnest Money %", data.get('earnestMoneyPct', 0.02), "B", num_format='0.0%'); row += 1
-    add_input_row(ws, row, "Closing Costs %", data.get('closingCostsPct', 0.03), "B", num_format='0.0%'); row += 1
-    add_input_row(ws, row, "Due Diligence Costs", data.get('dueDiligenceCosts', 50000), "B", num_format='$#,##0'); row += 1
+    add_input_row(ws, row, "Closing Costs %", data.get('closingCostsPct', 0.03), "B", num_format='0.0%', name="Closing_Costs_Pct"); row += 1
+    add_input_row(ws, row, "Due Diligence Costs", data.get('dueDiligenceCosts', 50000), "B", num_format='$#,##0', name="Due_Diligence"); row += 1
     row += 1
 
     # === UNIT MIX ===
@@ -295,23 +295,36 @@ def build_assumptions_tab(ws, data=None):
 
     opex_data = data.get('operatingExpenses', {})
     opex_start_row = row
-    add_input_row(ws, row, "Property Taxes", opex_data.get('propertyTax', 110000), "B", num_format='$#,##0'); row += 1
-    add_input_row(ws, row, "Insurance", opex_data.get('insurance', 55000), "B", num_format='$#,##0'); row += 1
+    add_input_row(ws, row, "Property Taxes", opex_data.get('propertyTax', 110000), "B", num_format='$#,##0', name="T12_Property_Tax"); row += 1
+    add_input_row(ws, row, "Insurance", opex_data.get('insurance', 55000), "B", num_format='$#,##0', name="T12_Insurance"); row += 1
+
+    # Utilities - individual line items
+    utilities_start_row = row
     add_input_row(ws, row, "Utilities - Electric", opex_data.get('utilitiesElectric', 35000), "B", num_format='$#,##0'); row += 1
     add_input_row(ws, row, "Utilities - Gas", opex_data.get('utilitiesGas', 20000), "B", num_format='$#,##0'); row += 1
     add_input_row(ws, row, "Utilities - Water/Sewer", opex_data.get('utilitiesWaterSewer', 45000), "B", num_format='$#,##0'); row += 1
     add_input_row(ws, row, "Utilities - Trash", opex_data.get('utilitiesTrash', 15000), "B", num_format='$#,##0'); row += 1
-    add_input_row(ws, row, "Repairs & Maintenance", opex_data.get('repairsMaintenance', 60000), "B", num_format='$#,##0'); row += 1
-    add_input_row(ws, row, "Payroll", opex_data.get('payroll', 75000), "B", num_format='$#,##0'); row += 1
+
+    # Total Utilities subtotal with named range
+    ws[f'A{row}'] = "  Total Utilities"
+    ws[f'B{row}'] = f'=SUM(B{utilities_start_row}:B{row-1})'
+    ws[f'B{row}'].number_format = '$#,##0'
+    ws[f'B{row}'].fill = CALC_FILL
+    ws[f'B{row}'].font = BOLD_FONT
+    add_named_range(ws, f'B${row}', "T12_Utilities")
+    row += 1
+
+    add_input_row(ws, row, "Repairs & Maintenance", opex_data.get('repairsMaintenance', 60000), "B", num_format='$#,##0', name="T12_Repairs"); row += 1
+    add_input_row(ws, row, "Payroll", opex_data.get('payroll', 75000), "B", num_format='$#,##0', name="T12_Payroll"); row += 1
     add_input_row(ws, row, "Management Fee %", opex_data.get('managementFeePct', 0.04), "B", num_format='0.0%', name="Mgmt_Fee_Pct"); row += 1
     ws[f'A{row}'] = "  Management Fee ($)"
     ws[f'B{row}'] = '=T12_EGI*Mgmt_Fee_Pct'
     ws[f'B{row}'].number_format = '$#,##0'
     ws[f'B{row}'].fill = CALC_FILL
     row += 1
-    add_input_row(ws, row, "Marketing/Advertising", opex_data.get('marketing', 8000), "B", num_format='$#,##0'); row += 1
-    add_input_row(ws, row, "Legal/Professional", opex_data.get('legalProfessional', 10000), "B", num_format='$#,##0'); row += 1
-    add_input_row(ws, row, "Administrative", opex_data.get('administrative', 12000), "B", num_format='$#,##0'); row += 1
+    add_input_row(ws, row, "Marketing/Advertising", opex_data.get('marketing', 8000), "B", num_format='$#,##0', name="T12_Marketing"); row += 1
+    add_input_row(ws, row, "Legal/Professional", opex_data.get('legalProfessional', 10000), "B", num_format='$#,##0', name="T12_Legal"); row += 1
+    add_input_row(ws, row, "Administrative", opex_data.get('administrative', 12000), "B", num_format='$#,##0', name="T12_Admin"); row += 1
     opex_end_row = row
 
     ws[f'A{row+1}'] = "Total Operating Expenses"
@@ -393,8 +406,8 @@ def build_assumptions_tab(ws, data=None):
     add_input_row(ws, row, "Interest Rate %", financing.get('interestRate', 0.06), "B", num_format='0.00%', name="Interest_Rate"); row += 1
     add_input_row(ws, row, "Amortization (years)", financing.get('amortizationYears', 30), "B", num_format='0', name="Amortization_Years"); row += 1
     add_input_row(ws, row, "Loan Term (years)", financing.get('loanTermYears', 10), "B", num_format='0'); row += 1
-    add_input_row(ws, row, "Origination Fee %", financing.get('originationFeePct', 0.01), "B", num_format='0.0%'); row += 1
-    add_input_row(ws, row, "Lender Legal/DD", financing.get('lenderLegalDd', 25000), "B", num_format='$#,##0'); row += 1
+    add_input_row(ws, row, "Origination Fee %", financing.get('originationFeePct', 0.01), "B", num_format='0.0%', name="Origination_Fee_Pct"); row += 1
+    add_input_row(ws, row, "Lender Legal/DD", financing.get('lenderLegalDd', 25000), "B", num_format='$#,##0', name="Lender_Legal"); row += 1
     row += 1
 
     ws[f'A{row}'] = "Loan Amount"
@@ -510,12 +523,12 @@ def build_sources_uses_tab(ws):
     row += 1
 
     ws[f'A{row}'] = "  Closing Costs"
-    ws[f'B{row}'] = '=Purchase_Price*ASSUMPTIONS!B18'  # Closing costs %
+    ws[f'B{row}'] = '=Purchase_Price*Closing_Costs_Pct'
     ws[f'B{row}'].number_format = '$#,##0'
     row += 1
 
     ws[f'A{row}'] = "  Due Diligence"
-    ws[f'B{row}'] = '=ASSUMPTIONS!B19'
+    ws[f'B{row}'] = '=Due_Diligence'
     ws[f'B{row}'].number_format = '$#,##0'
     row += 1
 
@@ -544,12 +557,12 @@ def build_sources_uses_tab(ws):
 
     fin_start = row
     ws[f'A{row}'] = "  Loan Origination Fee"
-    ws[f'B{row}'] = '=Loan_Amount*ASSUMPTIONS!B95'  # Origination fee %
+    ws[f'B{row}'] = '=Loan_Amount*Origination_Fee_Pct'
     ws[f'B{row}'].number_format = '$#,##0'
     row += 1
 
     ws[f'A{row}'] = "  Lender Legal/DD"
-    ws[f'B{row}'] = '=ASSUMPTIONS!B96'
+    ws[f'B{row}'] = '=Lender_Legal'
     ws[f'B{row}'].number_format = '$#,##0'
     row += 1
 
@@ -817,13 +830,13 @@ def build_annual_cashflow_tab(ws):
 
     # Other operating expenses (grow at OpEx growth rate)
     opex_categories = [
-        ('Insurance', 'ASSUMPTIONS!B58'),
-        ('Utilities', 'ASSUMPTIONS!B59+ASSUMPTIONS!B60+ASSUMPTIONS!B61+ASSUMPTIONS!B62'),
-        ('Repairs & Maintenance', 'ASSUMPTIONS!B63'),
-        ('Payroll', 'ASSUMPTIONS!B64'),
-        ('Marketing', 'ASSUMPTIONS!B68'),
-        ('Legal/Professional', 'ASSUMPTIONS!B69'),
-        ('Administrative', 'ASSUMPTIONS!B70'),
+        ('Insurance', 'T12_Insurance'),
+        ('Utilities', 'T12_Utilities'),
+        ('Repairs & Maintenance', 'T12_Repairs'),
+        ('Payroll', 'T12_Payroll'),
+        ('Marketing', 'T12_Marketing'),
+        ('Legal/Professional', 'T12_Legal'),
+        ('Administrative', 'T12_Admin'),
     ]
 
     for category, t12_ref in opex_categories:
@@ -905,13 +918,13 @@ def build_annual_cashflow_tab(ws):
     ws[f'A{row}'] = "Renovation Expenditures"
     for year in range(0, 11):
         col = year + 2
-        # Deploy renovation budget in Years 0-2
+        # Deploy renovation budget in Years 0-2 (10/50/40 split)
         if year == 0:
-            ws.cell(row, col, '=Total_Renovation_Budget*0.4')  # 40% upfront
+            ws.cell(row, col, '=Total_Renovation_Budget*0.1')  # 10% upfront
         elif year == 1:
-            ws.cell(row, col, '=Total_Renovation_Budget*0.4')  # 40% Year 1
+            ws.cell(row, col, '=Total_Renovation_Budget*0.5')  # 50% Year 1
         elif year == 2:
-            ws.cell(row, col, '=Total_Renovation_Budget*0.2')  # 20% Year 2
+            ws.cell(row, col, '=Total_Renovation_Budget*0.4')  # 40% Year 2
         else:
             ws.cell(row, col, 0)
         ws.cell(row, col).number_format = '$#,##0'
@@ -1050,9 +1063,10 @@ def build_annual_cashflow_tab(ws):
 
     ws[f'A{row}'] = "Levered IRR"
     ws[f'A{row}'].font = BOLD_FONT
-    # Use XIRR with dates or simplified IRR
-    # Simplified: use IRR function on cash flows for hold period
-    ws[f'B{row}'] = f'=IRR(B{total_cf_row}:L{total_cf_row})'
+    # Use IRR function on cash flows from Year 0 through Hold_Period
+    # OFFSET creates dynamic range: start at B{total_cf_row}, include (Hold_Period+1) columns
+    # Include 0.1 (10%) as initial guess to help convergence with multiple sign changes
+    ws[f'B{row}'] = f'=IRR(OFFSET(B{total_cf_row},0,0,1,Hold_Period+1),0.1)'
     ws[f'B{row}'].number_format = '0.0%'
     ws[f'B{row}'].font = BOLD_FONT
     ws[f'B{row}'].fill = POSITIVE_FILL

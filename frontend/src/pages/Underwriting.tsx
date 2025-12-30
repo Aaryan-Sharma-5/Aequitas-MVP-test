@@ -72,8 +72,8 @@ const Underwriting = () => {
   const [location, setLocation] = useState('Sacramento, CA');
   const [totalUnits, setTotalUnits] = useState(200);
   const [purchasePrice, setPurchasePrice] = useState(15000000);
-  const [constructionCost, setConstructionCost] = useState(25000000);
-  const [closingCosts, setClosingCosts] = useState(3000000);
+  const [constructionCost, setConstructionCost] = useState(100000);
+  const [closingCosts, setClosingCosts] = useState(purchasePrice * 0.03);
   const [avgMonthlyRent, setAvgMonthlyRent] = useState(1200);
   const [operatingExpenseRatio, setOperatingExpenseRatio] = useState(0.35);
   const [interestRate, setInterestRate] = useState(0.065);
@@ -94,6 +94,11 @@ const Underwriting = () => {
   const [loadingRentEstimate, setLoadingRentEstimate] = useState(false);
   const [showComparables, setShowComparables] = useState(false);
   const [comparables, setComparables] = useState<RentalComparable[]>([]);
+
+  // Auto-update closing costs when purchase price changes
+  useEffect(() => {
+    setClosingCosts(purchasePrice * 0.03);
+  }, [purchasePrice]);
 
   // Fetch current mortgage rates on mount
   useEffect(() => {
