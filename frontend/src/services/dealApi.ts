@@ -5,7 +5,6 @@
 
 import type {
   Deal,
-  DealFormData,
   DealResponse,
   DealsListResponse,
   DealsGroupedResponse,

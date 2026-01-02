@@ -5,12 +5,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { RiskAssessment } from '../types/riskAssessment';
+import type { RiskAssessment } from '../types/riskAssessment';
 import { calculateRiskAssessment, getRiskAssessment, convertToCamelCase } from '../services/riskAssessmentApi';
 import RentTierClassification from './RentTierClassification';
 import YieldBreakdown from './YieldBreakdown';
 import CapitalAppreciationChart from './CapitalAppreciationChart';
 import ArbitrageOpportunityCard from './ArbitrageOpportunityCard';
+import DealMemoModal from './DealMemoModal';
 
 interface RiskAssessmentPanelProps {
   dealId: number;
@@ -27,6 +28,7 @@ const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [calculating, setCalculating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMemoModal, setShowMemoModal] = useState<boolean>(false);
 
   // Load existing assessment on mount
   useEffect(() => {
@@ -104,26 +106,39 @@ const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
               Academic research-based analysis showing low-rent properties deliver 2-4% higher returns
             </p>
           </div>
-          <button
-            onClick={handleCalculateAssessment}
-            disabled={calculating}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-              calculating
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {calculating ? (
-              <span className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Calculating...
-              </span>
-            ) : assessment ? (
-              'Recalculate Assessment'
-            ) : (
-              'Calculate Assessment'
+          <div className="flex items-center space-x-3">
+            {assessment && (
+              <button
+                onClick={() => setShowMemoModal(true)}
+                className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center"
+              >
+                <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                View Deal Memo
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleCalculateAssessment}
+              disabled={calculating}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                calculating
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {calculating ? (
+                <span className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Calculating...
+                </span>
+              ) : assessment ? (
+                'Recalculate Assessment'
+              ) : (
+                'Calculate Assessment'
+              )}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -341,6 +356,15 @@ const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Deal Memo Modal */}
+      <DealMemoModal
+        dealId={dealId}
+        isOpen={showMemoModal}
+        onClose={() => setShowMemoModal(false)}
+        holdingPeriod={holdingPeriod}
+        geography={geography}
+      />
     </div>
   );
 };

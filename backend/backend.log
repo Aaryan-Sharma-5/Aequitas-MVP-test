@@ -1,4 +1,31 @@
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("deals")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("funds")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("fund_metrics")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("fund_quarterly_performance")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("investment_strategies")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("fund_cash_flows")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("fund_activities")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("benchmark_data")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("risk_assessments")
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("risk_benchmark_data")
+2026-01-01 19:37:03,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("hedonic_coefficients")
+2026-01-01 19:37:03,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("market_decile_thresholds")
+2026-01-01 19:37:03,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-01-01 19:37:03,436 INFO sqlalchemy.engine.Engine COMMIT
  * Serving Flask app 'app'
  * Debug mode: on
 Address already in use
-Port 5001 is in use by another program. Either identify and stop that program, or start the server with a different port.
+Port 5000 is in use by another program. Either identify and stop that program, or start the server with a different port.
+On macOS, try searching for and disabling 'AirPlay Receiver' in System Settings.

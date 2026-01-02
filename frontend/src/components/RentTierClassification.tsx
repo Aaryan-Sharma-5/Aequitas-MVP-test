@@ -125,7 +125,7 @@ const RentTierClassification: React.FC<RentTierClassificationProps> = ({
             />
             <Tooltip
               contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}
-              formatter={(value: any, name: any, props: any) => [props.payload.expectedReturn, 'Expected Return']}
+              formatter={(_value: any, _name: any, props: any) => [props.payload.expectedReturn, 'Expected Return']}
               labelFormatter={(label) => `Decile: ${label}`}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>

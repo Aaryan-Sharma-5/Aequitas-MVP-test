@@ -82,19 +82,6 @@ const YieldBreakdown: React.FC<YieldBreakdownProps> = ({
     },
   ];
 
-  const getBenchmarkColor = (position: string): string => {
-    switch (position) {
-      case 'Above':
-        return 'text-green-600';
-      case 'Within':
-        return 'text-gray-600';
-      case 'Below':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
   const getBenchmarkBadgeColor = (position: string): string => {
     switch (position) {
       case 'Above':

@@ -3,7 +3,7 @@
  * Handles all communication with the risk assessment backend endpoints
  */
 
-import {
+import type {
   RiskAssessment,
   DealMemo,
   BenchmarkData,

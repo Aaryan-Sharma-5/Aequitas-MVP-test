@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, ArrowUp, PieChart, Activity, Clock } from 'lucide-react';
+import { DollarSign, TrendingUp, ArrowUp, PieChart, Activity } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  LineChart,
   Line,
   ComposedChart,
   CartesianGrid,

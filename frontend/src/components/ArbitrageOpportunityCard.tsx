@@ -66,7 +66,7 @@ const ArbitrageOpportunityCard: React.FC<ArbitrageOpportunityCardProps> = ({
     }
   };
 
-  const getInvestorTypeIcon = (investor: string): JSX.Element => {
+  const getInvestorTypeIcon = (investor: string): React.ReactElement => {
     const lowerInvestor = investor.toLowerCase();
     if (lowerInvestor.includes('medium landlord') || lowerInvestor.includes('10-50')) {
       return (

@@ -9,6 +9,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.chart import BarChart, Reference
 from openpyxl.utils import get_column_letter
 from app.services.deal_service import DealService
+from app.services.deal_memo_service import DealMemoService
 
 
 class ExcelExportService:
@@ -56,6 +57,15 @@ class ExcelExportService:
         ExcelExportService._create_cash_flow_sheet(wb, deal_model)
         ExcelExportService._create_market_data_sheet(wb, deal_model)
         ExcelExportService._create_returns_analysis(wb, deal_model)
+
+        # Add risk assessment sheets if available
+        try:
+            ExcelExportService._create_risk_assessment_sheet(wb, deal_model)
+            ExcelExportService._create_deal_memo_sheet(wb, deal_model)
+            ExcelExportService._create_sensitivity_analysis_sheet(wb, deal_model)
+        except Exception as e:
+            # Risk assessment may not be available for all deals
+            print(f"Note: Risk assessment sheets not added: {str(e)}")
 
         # Save to BytesIO
         excel_file = io.BytesIO()
@@ -440,3 +450,318 @@ class ExcelExportService:
         # Adjust column widths
         ws.column_dimensions['A'].width = 35
         ws.column_dimensions['B'].width = 20
+
+    @staticmethod
+    def _create_risk_assessment_sheet(wb, deal):
+        """Create Risk Assessment sheet with comprehensive analysis"""
+        ws = wb.create_sheet("Risk Assessment")
+
+        # Get risk assessment data
+        assessment = DealService.get_risk_assessment(deal.id)
+        if not assessment:
+            ws['A1'] = "No risk assessment available for this deal"
+            ws['A1'].font = ExcelExportService.TITLE_FONT
+            return
+
+        # Title
+        ws['A1'] = "Risk Assessment Analysis"
+        ws['A1'].font = Font(bold=True, size=16)
+        ws.merge_cells('A1:D1')
+
+        # Deal name
+        ws['A2'] = deal.deal_name
+        ws['A2'].font = Font(bold=True, size=12, color="4472C4")
+        ws.merge_cells('A2:D2')
+
+        row = 4
+
+        # Section 1: Rent Tier Classification
+        ws[f'A{row}'] = "RENT TIER CLASSIFICATION"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        tier_data = [
+            ("Rent Tier", assessment.get('rent_tier_label', 'N/A')),
+            ("National Decile", assessment.get('rent_decile_national', 'N/A')),
+            ("Regional Decile", assessment.get('rent_decile_regional', 'N/A')),
+            ("Predicted Rent (Monthly)", f"${assessment.get('predicted_fundamental_rent', 0):.2f}"),
+            ("Percentile", f"{assessment.get('rent_percentile', 0):.1f}%"),
+        ]
+
+        for label, value in tier_data:
+            ws[f'A{row}'] = label
+            ws[f'A{row}'].font = ExcelExportService.BOLD_FONT
+            ws[f'B{row}'] = value
+            row += 1
+
+        row += 1
+
+        # Section 2: Yield Analysis
+        ws[f'A{row}'] = "YIELD ANALYSIS"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        yield_data = [
+            ("Gross Yield", f"{assessment.get('gross_yield', 0):.2f}%"),
+            ("Maintenance Cost", f"{assessment.get('maintenance_cost_pct', 0):.2f}%"),
+            ("Property Tax", f"{assessment.get('property_tax_pct', 0):.2f}%"),
+            ("Turnover Cost", f"{assessment.get('turnover_cost_pct', 0):.2f}%"),
+            ("Default Cost", f"{assessment.get('default_cost_pct', 0):.2f}%"),
+            ("Management Cost", f"{assessment.get('management_cost_pct', 0):.2f}%"),
+            ("Net Yield", f"{assessment.get('net_yield', 0):.2f}%"),
+            ("vs Benchmark", assessment.get('vs_benchmark_yield', 'N/A')),
+        ]
+
+        for label, value in yield_data:
+            ws[f'A{row}'] = label
+            ws[f'A{row}'].font = ExcelExportService.BOLD_FONT if 'Net Yield' in label else None
+            ws[f'B{row}'] = value
+            if 'Net Yield' in label:
+                ws[f'B{row}'].fill = ExcelExportService.POSITIVE_FILL
+            row += 1
+
+        row += 1
+
+        # Section 3: Total Returns
+        ws[f'A{row}'] = "TOTAL RETURNS"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        return_data = [
+            ("Total Return (Unlevered)", f"{assessment.get('total_return_unlevered', 0):.2f}%"),
+            ("Total Return (Levered)", f"{assessment.get('total_return_levered', 0):.2f}%"),
+            ("Capital Gain (Annual)", f"{assessment.get('capital_gain_yield_annual', 0):.2f}%"),
+            ("vs Benchmark", assessment.get('vs_benchmark_return', 'N/A')),
+        ]
+
+        for label, value in return_data:
+            ws[f'A{row}'] = label
+            ws[f'A{row}'].font = ExcelExportService.BOLD_FONT if 'Levered' in label else None
+            ws[f'B{row}'] = value
+            if 'Levered' in label:
+                ws[f'B{row}'].fill = ExcelExportService.POSITIVE_FILL
+            row += 1
+
+        row += 1
+
+        # Section 4: Risk Scores
+        ws[f'A{row}'] = "RISK ANALYSIS"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        risk_data = [
+            ("Systematic Risk Score", f"{assessment.get('systematic_risk_score', 0):.1f}/100"),
+            ("Regulatory Risk Score", f"{assessment.get('regulatory_risk_score', 0):.1f}/100"),
+            ("Idiosyncratic Risk Score", f"{assessment.get('idiosyncratic_risk_score', 0):.1f}/100"),
+            ("Composite Risk Score", f"{assessment.get('composite_risk_score', 0):.1f}/100"),
+            ("Risk Level", assessment.get('composite_risk_level', 'N/A')),
+        ]
+
+        for label, value in risk_data:
+            ws[f'A{row}'] = label
+            ws[f'A{row}'].font = ExcelExportService.BOLD_FONT if 'Composite' in label else None
+            ws[f'B{row}'] = value
+            row += 1
+
+        row += 1
+
+        # Section 5: Arbitrage Opportunity
+        ws[f'A{row}'] = "ARBITRAGE OPPORTUNITY"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        arbitrage_data = [
+            ("Arbitrage Score", f"{assessment.get('arbitrage_opportunity_score', 0):.1f}/100"),
+            ("Opportunity Level", assessment.get('arbitrage_opportunity_level', 'N/A')),
+            ("Recommended Investor", assessment.get('recommended_investor_type', 'N/A')),
+        ]
+
+        for label, value in arbitrage_data:
+            ws[f'A{row}'] = label
+            ws[f'A{row}'].font = ExcelExportService.BOLD_FONT if 'Score' in label else None
+            ws[f'B{row}'] = value
+            row += 1
+
+        # Column widths
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 25
+        ws.column_dimensions['C'].width = 15
+        ws.column_dimensions['D'].width = 15
+
+    @staticmethod
+    def _create_deal_memo_sheet(wb, deal):
+        """Create Deal Memo sheet with investment recommendation"""
+        ws = wb.create_sheet("Deal Memo")
+
+        # Get deal memo data
+        try:
+            memo = DealMemoService.generate_memo(deal.id)
+        except Exception as e:
+            ws['A1'] = f"Error generating deal memo: {str(e)}"
+            return
+
+        # Title
+        ws['A1'] = "Investment Memo"
+        ws['A1'].font = Font(bold=True, size=16)
+        ws.merge_cells('A1:D1')
+
+        row = 3
+
+        # Executive Summary
+        ws[f'A{row}'] = "EXECUTIVE SUMMARY"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        exec_summary = memo.get('executive_summary', {})
+        exec_data = [
+            ("Property", exec_summary.get('property', 'N/A')),
+            ("Address", exec_summary.get('address', 'N/A')),
+            ("Purchase Price", f"${exec_summary.get('purchase_price', 0):,.0f}"),
+            ("Rent Tier", exec_summary.get('rent_tier', 'N/A')),
+            ("Tier Category", exec_summary.get('tier_category', 'N/A')),
+            ("Expected Return (Levered)", f"{exec_summary.get('calculated_return_levered', 0):.2f}%"),
+            ("Risk Level", exec_summary.get('risk_level', 'N/A')),
+            ("Overall Rating", exec_summary.get('overall_rating', 'N/A')),
+            ("Target Investor", exec_summary.get('target_investor', 'N/A')),
+        ]
+
+        for label, value in exec_data:
+            ws[f'A{row}'] = label
+            ws[f'A{row}'].font = ExcelExportService.BOLD_FONT
+            ws[f'B{row}'] = value
+            if 'Rating' in label:
+                ws[f'B{row}'].fill = ExcelExportService.POSITIVE_FILL
+            row += 1
+
+        row += 2
+
+        # Investment Recommendation
+        ws[f'A{row}'] = "INVESTMENT RECOMMENDATION"
+        ws[f'A{row}'].font = ExcelExportService.HEADER_FONT
+        ws[f'A{row}'].fill = ExcelExportService.HEADER_FILL
+        ws.merge_cells(f'A{row}:D{row}')
+        row += 1
+
+        recommendation = memo.get('investment_recommendation', {})
+        ws[f'A{row}'] = "Rating"
+        ws[f'A{row}'].font = ExcelExportService.BOLD_FONT
+        ws[f'B{row}'] = recommendation.get('overall_rating', 'N/A')
+        ws[f'B{row}'].fill = ExcelExportService.POSITIVE_FILL
+        row += 1
+
+        ws[f'A{row}'] = "Score"
+        ws[f'A{row}'].font = ExcelExportService.BOLD_FONT
+        ws[f'B{row}'] = f"{recommendation.get('rating_score', 0)}/100"
+        row += 2
+
+        # Key Strengths
+        key_strengths = recommendation.get('key_strengths', [])
+        if key_strengths:
+            ws[f'A{row}'] = "Key Strengths:"
+            ws[f'A{row}'].font = Font(bold=True, color="006100")
+            row += 1
+            for strength in key_strengths:
+                ws[f'A{row}'] = f"✓ {strength}"
+                ws.merge_cells(f'A{row}:D{row}')
+                row += 1
+
+        row += 1
+
+        # Key Concerns
+        key_concerns = recommendation.get('key_concerns', [])
+        if key_concerns:
+            ws[f'A{row}'] = "Key Concerns:"
+            ws[f'A{row}'].font = Font(bold=True, color="9C0006")
+            row += 1
+            for concern in key_concerns:
+                ws[f'A{row}'] = f"⚠ {concern}"
+                ws.merge_cells(f'A{row}:D{row}')
+                row += 1
+
+        row += 2
+
+        # Summary
+        ws[f'A{row}'] = "Summary:"
+        ws[f'A{row}'].font = ExcelExportService.BOLD_FONT
+        row += 1
+        ws[f'A{row}'] = recommendation.get('summary', '')
+        ws.merge_cells(f'A{row}:D{row}')
+        ws[f'A{row}'].alignment = Alignment(wrap_text=True)
+
+        # Column widths
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions['C'].width = 20
+        ws.column_dimensions['D'].width = 20
+
+    @staticmethod
+    def _create_sensitivity_analysis_sheet(wb, deal):
+        """Create Sensitivity Analysis sheet"""
+        ws = wb.create_sheet("Sensitivity Analysis")
+
+        # Get deal memo for sensitivity data
+        try:
+            memo = DealMemoService.generate_memo(deal.id)
+            sensitivity = memo.get('sensitivity_analysis', {})
+        except Exception as e:
+            ws['A1'] = f"Error generating sensitivity analysis: {str(e)}"
+            return
+
+        # Title
+        ws['A1'] = "Sensitivity Analysis"
+        ws['A1'].font = Font(bold=True, size=16)
+        ws.merge_cells('A1:F1')
+
+        row = 3
+
+        # Headers
+        headers = ['Scenario', 'Rent Assumption', 'Appreciation', 'Net Yield', 'Unlevered Return', 'Levered Return']
+        for col, header in enumerate(headers, start=1):
+            ws.cell(row=row, column=col, value=header)
+            ws.cell(row=row, column=col).font = ExcelExportService.HEADER_FONT
+            ws.cell(row=row, column=col).fill = ExcelExportService.HEADER_FILL
+
+        row += 1
+
+        # Scenario data
+        scenarios = sensitivity.get('scenarios', {})
+        for scenario_key, scenario_data in scenarios.items():
+            ws.cell(row=row, column=1, value=scenario_data.get('name', scenario_key))
+            ws.cell(row=row, column=2, value=f"${scenario_data.get('rent_assumption', 0):,.0f}")
+            ws.cell(row=row, column=3, value=f"{scenario_data.get('appreciation_assumption', 0):.2f}%")
+            ws.cell(row=row, column=4, value=f"{scenario_data.get('net_yield', 0):.2f}%")
+            ws.cell(row=row, column=5, value=f"{scenario_data.get('total_return_unlevered', 0):.2f}%")
+            ws.cell(row=row, column=6, value=f"{scenario_data.get('total_return_levered', 0):.2f}%")
+
+            # Highlight base case
+            if 'base' in scenario_data.get('name', '').lower():
+                for col in range(1, 7):
+                    ws.cell(row=row, column=col).fill = ExcelExportService.SUBHEADER_FILL
+
+            row += 1
+
+        row += 2
+
+        # Interpretation
+        ws[f'A{row}'] = "Interpretation:"
+        ws[f'A{row}'].font = ExcelExportService.BOLD_FONT
+        row += 1
+        ws[f'A{row}'] = sensitivity.get('interpretation', '')
+        ws.merge_cells(f'A{row}:F{row}')
+        ws[f'A{row}'].alignment = Alignment(wrap_text=True)
+
+        # Column widths
+        for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+            ws.column_dimensions[col].width = 20
