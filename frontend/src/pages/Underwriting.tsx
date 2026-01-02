@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { FileText, Download, AlertCircle, ChevronDown, TrendingUp, Save } from 'lucide-react';
+import { FileText, Download, ChevronDown, TrendingUp, Save } from 'lucide-react';
 import { fredApi } from '../services/fredApi';
 import { rentcastApi } from '../services/rentcastApi';
 import { dealApi } from '../services/dealApi';
@@ -17,6 +17,7 @@ import type { RentEstimateData, RentalComparable } from '../types/rentcast';
 import type { Deal, DealStatus } from '../types/deal';
 import { DEAL_STATUS_LABELS } from '../types/deal';
 import DealsListSidebar from '../components/DealsListSidebar';
+import RiskAssessmentPanel from '../components/RiskAssessmentPanel';
 
 // --- FINANCIAL CALCULATION UTILITIES ---
 const calculatePMT = (rate: number, nper: number, pv: number) => {
@@ -415,14 +416,6 @@ const Underwriting = () => {
       totalReturn,
     };
   }, [purchasePrice, constructionCost, closingCosts, totalUnits, avgMonthlyRent, operatingExpenseRatio, interestRate, loanTermYears, ltv, exitCapRate, holdingPeriod]);
-
-  // Risk Assessment Logic
-  const riskAssessment = useMemo(() => [
-    { label: 'Financing Risk', level: ltv > 80 ? 'High' : ltv > 70 ? 'Medium' : 'Low' },
-    { label: 'Market Risk', level: 'Medium' },
-    { label: 'Construction Risk', level: constructionCost > 20000000 ? 'High' : constructionCost > 10000000 ? 'Medium' : 'Low' },
-    { label: 'Regulatory Risk', level: 'Low' },
-  ], [ltv, constructionCost]);
 
   // Format cash flow data for chart
   const cashFlowData = metrics.annualCashFlows.map((cashFlow, index) => ({
@@ -844,27 +837,10 @@ const Underwriting = () => {
             <div className="text-center text-xs text-gray-500 font-medium mt-2">Year</div>
           </div>
 
-          {/* Risk Assessment */}
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <AlertCircle size={20} color="#f97316" />
-              <h3 className="text-lg font-semibold text-gray-800">Risk Assessment</h3>
-            </div>
-            <div className="space-y-3">
-              {riskAssessment.map((risk, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">{risk.label}</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    risk.level === 'Low' ? 'bg-green-100 text-green-700' :
-                    risk.level === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {risk.level}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Risk Assessment - Academic Research-Based Analysis */}
+          {currentDealId && (
+            <RiskAssessmentPanel dealId={currentDealId} holdingPeriod={holdingPeriod} geography="US" />
+          )}
         </div>
         </div>
       </div>
