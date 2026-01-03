@@ -14,10 +14,10 @@ Backend
    ```
 2. Start the backend (development):
    ```bash
-   # dev server (foreground)
-   PORT=5001 python3 run.py
+   # dev server (foreground) — this repo often uses port 5002 in examples
+   PORT=5002 python3 run.py
    # or in background (use gunicorn for production-like runs)
-   gunicorn -b 0.0.0.0:5001 "app:create_app()" --workers 2 --log-file -
+   gunicorn -b 0.0.0.0:5002 "app:create_app()" --workers 2 --log-file -
    ```
 
 Frontend
@@ -28,8 +28,14 @@ Frontend
    npm run dev
    ```
 2. The frontend dev server runs on http://127.0.0.1:5173 by default.
-   The dev Vite config proxies requests starting with `/api` to
-   `http://localhost:5001` so frontend code can call `/api/v1/...` directly.
+   The dev Vite config proxies requests starting with `/api` to the
+   backend. You can override the proxy target with the `BACKEND_URL`
+   environment variable when starting the frontend. Example:
+
+   ```bash
+   # point Vite to a backend running on port 5002
+   BACKEND_URL=http://localhost:5002 npm run dev
+   ```
 
 Notes
 - If port 5000 is in use by macOS services, the backend will fail to bind — use `PORT=5001` or another free port.
