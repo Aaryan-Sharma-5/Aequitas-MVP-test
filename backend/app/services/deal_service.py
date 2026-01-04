@@ -429,6 +429,12 @@ class DealService:
             # Benchmarks
             'vs_benchmark_yield': yield_benchmark['position'],
             'vs_benchmark_return': return_benchmark['position'],
+            'benchmark_net_yield_min': yield_benchmark.get('benchmark_min'),
+            'benchmark_net_yield_max': yield_benchmark.get('benchmark_max'),
+            'benchmark_capital_gain_min': return_benchmark.get('benchmark_min'),
+            'benchmark_capital_gain_max': return_benchmark.get('benchmark_max'),
+            'benchmark_total_return_min': return_benchmark.get('benchmark_min'),
+            'benchmark_total_return_max': return_benchmark.get('benchmark_max'),
 
             # Full component data
             'components': {
@@ -474,13 +480,29 @@ class DealService:
 
         if existing:
             # Update existing record
-            for key, value in assessment.items():
-                if key not in ['deal_id', 'calculated_at', 'components', 'assessment_id']:
-                    if hasattr(existing, key):
-                        setattr(existing, key, value)
-            existing.updated_at = datetime.utcnow()
-            db.session.commit()
-            return existing.id
+            try:
+                # Log database path for debugging
+                import os
+                db_path = db.engine.url.database
+                print(f"DEBUG: Database path: {db_path}")
+                print(f"DEBUG: File exists: {os.path.exists(db_path) if db_path else 'N/A'}")
+                print(f"DEBUG: File writable: {os.access(db_path, os.W_OK) if db_path else 'N/A'}")
+
+                for key, value in assessment.items():
+                    if key not in ['deal_id', 'calculated_at', 'components', 'assessment_id']:
+                        if hasattr(existing, key):
+                            setattr(existing, key, value)
+                existing.updated_at = datetime.utcnow()
+
+                # Try to flush before commit
+                db.session.flush()
+                db.session.commit()
+                return existing.id
+            except Exception as e:
+                db.session.rollback()
+                print(f"DEBUG: Database error: {str(e)}")
+                print(f"DEBUG: Error type: {type(e)}")
+                raise Exception(f"Failed to update risk assessment: {str(e)}")
         else:
             # Create new record
             risk_assessment = RiskAssessmentModel(
@@ -507,6 +529,7 @@ class DealService:
                 regulatory_risk_score=assessment['regulatory_risk_score'],
                 idiosyncratic_risk_score=assessment['idiosyncratic_risk_score'],
                 composite_risk_level=assessment['composite_risk_level'],
+                composite_risk_score=assessment['composite_risk_score'],
                 renter_constraint_score=assessment['renter_constraint_score'],
                 institutional_constraint_score=assessment['institutional_constraint_score'],
                 medium_landlord_constraint_score=assessment['medium_landlord_fit_score'],
@@ -521,16 +544,20 @@ class DealService:
                 vs_benchmark_return=assessment['vs_benchmark_return']
             )
 
-            db.session.add(risk_assessment)
-            db.session.commit()
-
-            # Update deal with risk_assessment_id
-            deal = DealModel.query.get(deal_id)
-            if deal:
-                deal.risk_assessment_id = risk_assessment.id
+            try:
+                db.session.add(risk_assessment)
                 db.session.commit()
 
-            return risk_assessment.id
+                # Update deal with risk_assessment_id
+                deal = DealModel.query.get(deal_id)
+                if deal:
+                    deal.risk_assessment_id = risk_assessment.id
+                    db.session.commit()
+
+                return risk_assessment.id
+            except Exception as e:
+                db.session.rollback()
+                raise Exception(f"Failed to create risk assessment: {str(e)}")
 
     @staticmethod
     def get_risk_assessment(deal_id: int) -> Optional[Dict]:

@@ -22,6 +22,11 @@ def create_app(test_config=None):
     # Initialize database
     db.init_app(app)
 
+    # Configure database session
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        db.session.remove()
+
     # Create tables if they don't exist
     with app.app_context():
         db.create_all()

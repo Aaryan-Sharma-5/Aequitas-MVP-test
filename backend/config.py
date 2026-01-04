@@ -34,3 +34,13 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = DEBUG
+
+    # SQLite-specific connection arguments
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {
+            'check_same_thread': False,
+            'timeout': 30
+        },
+        'pool_pre_ping': True,
+        'pool_recycle': 3600
+    }
