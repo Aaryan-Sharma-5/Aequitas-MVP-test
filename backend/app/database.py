@@ -1027,3 +1027,203 @@ class MarketDecileThresholds(db.Model):
             'lastUpdated': self.last_updated.isoformat() if self.last_updated else None,
             'createdAt': self.created_at.isoformat() if self.created_at else None
         }
+
+
+# ============================================================================
+# GP (GENERAL PARTNER) MODELS
+# ============================================================================
+
+
+class GPModel(db.Model):
+    """
+    SQLAlchemy model for General Partners (GPs)
+    Stores GP information, contact details, and performance metrics
+    """
+    __tablename__ = 'gps'
+
+    # Primary Key
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Basic GP Information
+    gp_name = Column(String(255), nullable=False)
+    location = Column(String(255))
+    tier = Column(String(50))  # Standard, Premium, etc.
+    performance_rating = Column(String(50))  # Outstanding, Excellent, etc.
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Contact Information
+    contact_email = Column(String(255))
+    contact_phone = Column(String(50))
+    website = Column(String(255))
+
+    # Performance Metrics
+    net_irr = Column(Float)  # Net IRR percentage
+    gross_irr = Column(Float)  # Gross IRR percentage
+    irr_trend = Column(Float)  # Positive or negative trend
+    total_aum = Column(Float)  # Assets Under Management
+    deal_count = Column(Integer)  # Number of deals managed
+    current_value = Column(Float)  # Current portfolio value
+
+    # Additional Tags/Labels
+    tags = Column(Text)  # JSON string of tags
+
+    def __repr__(self):
+        return f'<GP {self.id}: {self.gp_name}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'gpName': self.gp_name,
+            'location': self.location,
+            'tier': self.tier,
+            'performanceRating': self.performance_rating,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
+            'contactEmail': self.contact_email,
+            'contactPhone': self.contact_phone,
+            'website': self.website,
+            'netIrr': self.net_irr,
+            'grossIrr': self.gross_irr,
+            'irrTrend': self.irr_trend,
+            'totalAum': self.total_aum,
+            'dealCount': self.deal_count,
+            'currentValue': self.current_value,
+            'tags': self.tags
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Create a GPModel instance from a dictionary"""
+        return GPModel(
+            gp_name=data.get('gpName'),
+            location=data.get('location'),
+            tier=data.get('tier'),
+            performance_rating=data.get('performanceRating'),
+            contact_email=data.get('contactEmail'),
+            contact_phone=data.get('contactPhone'),
+            website=data.get('website'),
+            net_irr=data.get('netIrr'),
+            gross_irr=data.get('grossIrr'),
+            irr_trend=data.get('irrTrend'),
+            total_aum=data.get('totalAum'),
+            deal_count=data.get('dealCount'),
+            current_value=data.get('currentValue'),
+            tags=data.get('tags')
+        )
+
+    def update_from_dict(self, data):
+        """Update model fields from a dictionary"""
+        if 'gpName' in data:
+            self.gp_name = data['gpName']
+        if 'location' in data:
+            self.location = data['location']
+        if 'tier' in data:
+            self.tier = data['tier']
+        if 'performanceRating' in data:
+            self.performance_rating = data['performanceRating']
+        if 'contactEmail' in data:
+            self.contact_email = data['contactEmail']
+        if 'contactPhone' in data:
+            self.contact_phone = data['contactPhone']
+        if 'website' in data:
+            self.website = data['website']
+        if 'netIrr' in data:
+            self.net_irr = data['netIrr']
+        if 'grossIrr' in data:
+            self.gross_irr = data['grossIrr']
+        if 'irrTrend' in data:
+            self.irr_trend = data['irrTrend']
+        if 'totalAum' in data:
+            self.total_aum = data['totalAum']
+        if 'dealCount' in data:
+            self.deal_count = data['dealCount']
+        if 'currentValue' in data:
+            self.current_value = data['currentValue']
+        if 'tags' in data:
+            self.tags = data['tags']
+
+        self.updated_at = datetime.utcnow()
+
+
+class GPQuarterlyPerformanceModel(db.Model):
+    """
+    SQLAlchemy model for GP quarterly performance data
+    Stores IRR performance by quarter for trend analysis
+    """
+    __tablename__ = 'gp_quarterly_performance'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gp_id = Column(Integer, ForeignKey('gps.id'), nullable=False)
+    year = Column(Integer, nullable=False)
+    quarter = Column(Integer, nullable=False)  # 1, 2, 3, 4
+    irr = Column(Float)  # IRR for that quarter
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f'<GPQuarterlyPerformance {self.id}: GP {self.gp_id} Q{self.quarter} {self.year}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'gpId': self.gp_id,
+            'year': self.year,
+            'quarter': self.quarter,
+            'quarterLabel': f'Q{self.quarter} {self.year}',
+            'irr': self.irr,
+            'createdAt': self.created_at.isoformat() if self.created_at else None
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Create a GPQuarterlyPerformanceModel instance from a dictionary"""
+        return GPQuarterlyPerformanceModel(
+            gp_id=data.get('gpId'),
+            year=data.get('year'),
+            quarter=data.get('quarter'),
+            irr=data.get('irr')
+        )
+
+
+class GPPortfolioSummaryModel(db.Model):
+    """
+    SQLAlchemy model for GP portfolio summary
+    Stores performance distribution across quartiles
+    """
+    __tablename__ = 'gp_portfolio_summary'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gp_id = Column(Integer, ForeignKey('gps.id'), nullable=False)
+    year = Column(Integer, nullable=False)
+    quartile = Column(Integer, nullable=False)  # 1, 2, 3, or 4
+    deal_count = Column(Integer)  # Number of deals in this quartile
+    percentage = Column(Float)  # Percentage of deals in this quartile
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f'<GPPortfolioSummary {self.id}: GP {self.gp_id} Q{self.quartile} {self.year}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'gpId': self.gp_id,
+            'year': self.year,
+            'quartile': self.quartile,
+            'dealCount': self.deal_count,
+            'percentage': self.percentage,
+            'createdAt': self.created_at.isoformat() if self.created_at else None
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Create a GPPortfolioSummaryModel instance from a dictionary"""
+        return GPPortfolioSummaryModel(
+            gp_id=data.get('gpId'),
+            year=data.get('year'),
+            quartile=data.get('quartile'),
+            deal_count=data.get('dealCount'),
+            percentage=data.get('percentage')
+        )

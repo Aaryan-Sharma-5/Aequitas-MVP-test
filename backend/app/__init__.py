@@ -49,6 +49,10 @@ def create_app(test_config=None):
     from .api.v1.fund_routes import fund_routes
     app.register_blueprint(fund_routes, url_prefix='/api/v1')
 
+    # GP management API
+    from .api.v1.gp_routes import gp_routes
+    app.register_blueprint(gp_routes, url_prefix='/api/v1')
+
     # Excel export API
     from .api.v1.excel_export_routes import excel_export_bp
     app.register_blueprint(excel_export_bp, url_prefix='/api/v1')
