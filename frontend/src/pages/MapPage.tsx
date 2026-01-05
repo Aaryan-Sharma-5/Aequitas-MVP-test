@@ -388,6 +388,7 @@ const MapPage = () => {
         isOpen={isDealModalOpen}
         onClose={handleCloseDealModal}
         onSubmit={handleDealSubmit}
+  showUrlImport={false}
         initialData={{
           dealName: selectedPropertyForDeal?.address ? `Deal - ${selectedPropertyForDeal.address}` : '',
           location: searchParams.searchValue,

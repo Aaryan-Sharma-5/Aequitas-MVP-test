@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  Legend
+  
 } from 'recharts';
 import { gpApi } from '../services/gpApi';
 import type { GP, GPPerformanceComparison, GPTopPerformers, GPOverview } from '../types/gp';
