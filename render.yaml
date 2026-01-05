@@ -1,10 +1,4 @@
 services:
-  # PostgreSQL Database (Free Tier)
-  - type: pserv
-    name: aequitas-db
-    plan: free
-    region: oregon
-
   # Web Service
   - type: web
     name: aequitas-mvp
@@ -40,6 +34,4 @@ services:
         value: https://aequitas-mvp.onrender.com
 
       - key: DATABASE_URL
-        fromDatabase:
-          name: aequitas-db
-          property: connectionString
+        sync: false
