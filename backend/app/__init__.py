@@ -43,11 +43,13 @@ def create_app(test_config=None):
         db.session.remove()
 
     # Create tables if they don't exist, but don't crash if they already exist
-    with app.app_context():
-        try:
+    try:
+        with app.app_context():
             db.create_all()
-        except Exception as e:
-            print(f"DB create_all error: {e}")
+            print("Database tables created successfully")
+    except Exception as e:
+        print(f"DB create_all error (continuing anyway): {e}")
+        # Continue even if table creation fails - tables may already exist
 
     # Enable CORS for frontend communication (only in development)
     # In production (Docker), CORS not needed as same-origin
