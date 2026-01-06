@@ -18,6 +18,7 @@ import type { Deal, DealStatus } from '../types/deal';
 import { DEAL_STATUS_LABELS } from '../types/deal';
 import DealsListSidebar from '../components/DealsListSidebar';
 import RiskAssessmentPanel from '../components/RiskAssessmentPanel';
+import PropertyUrlInput from '../components/PropertyUrlInput';
 
 // --- FINANCIAL CALCULATION UTILITIES ---
 const calculatePMT = (rate: number, nper: number, pv: number) => {
@@ -66,6 +67,7 @@ const Underwriting = () => {
   const [currentDealId, setCurrentDealId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Deal Parameters State
   const [dealName, setDealName] = useState('New Development Project');
@@ -201,6 +203,34 @@ const Underwriting = () => {
   const handleSelectDeal = (deal: Deal) => {
     if (deal.id) {
       loadDeal(deal.id);
+    }
+  };
+
+  // Create deal from imported property data and load it
+  const handleImportCreateDeal = async (data: any) => {
+    try {
+      // Map extracted property data to Deal create shape
+      const createPayload: Partial<Deal> = {
+        dealName: data.propertyName || `Deal - ${data.address || data.city || 'Imported'}`,
+        location: data.city && data.state ? `${data.city}, ${data.state}` : data.city || data.state || data.address || '',
+        status: 'potential',
+        propertyAddress: data.address,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        monthlyRent: data.estimatedRent || undefined,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        squareFootage: data.buildingSizeSf
+      };
+
+      const created = await dealApi.createDeal(createPayload);
+      if (created && created.id) {
+        // Load the newly created deal into the underwriting page
+        loadDeal(created.id);
+      }
+    } catch (err) {
+      console.error('Error creating deal from imported property:', err);
+      alert('Failed to create deal from imported property');
     }
   };
 
@@ -433,7 +463,7 @@ const Underwriting = () => {
             {currentDealId && <span className="ml-2 text-blue-600 font-medium">• Deal #{currentDealId} loaded</span>}
           </p>
         </div>
-        <div className="flex gap-2">
+  <div className="flex gap-2">
           <button
             onClick={handleSaveDeal}
             disabled={!currentDealId || saving}
@@ -441,6 +471,12 @@ const Underwriting = () => {
           >
             <Save size={16} />
             {saving ? 'Saving...' : 'Save Deal'}
+          </button>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium text-sm transition-colors"
+          >
+            Import URL
           </button>
           <button
             onClick={handleExportExcel}
@@ -470,6 +506,7 @@ const Underwriting = () => {
             <FileText size={20} color="#3b82f6" />
             <h3 className="text-lg font-semibold text-gray-800">Deal Parameters</h3>
           </div>
+          {/* Import via modal only (Import URL button opens modal) */}
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Deal Name</label>
@@ -844,6 +881,32 @@ const Underwriting = () => {
         </div>
         </div>
       </div>
+
+      {/* Import URL Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="relative w-full max-w-2xl p-6 bg-white rounded-lg shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Import Property from URL</h2>
+              <button
+                onClick={() => setIsImportModalOpen(false)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+                aria-label="Close import modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <PropertyUrlInput
+              onDataExtracted={async (data) => {
+                await handleImportCreateDeal(data);
+                setIsImportModalOpen(false);
+              }}
+              onError={(err) => console.warn('Import error:', err)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

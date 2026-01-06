@@ -491,7 +491,7 @@ def build_sources_uses_tab(ws):
 
     ws[f'A{row}'] = "Equity"
     equity_row = row
-    ws[f'B{row}'] = f'=B{row+4}-B{row-1}'  # Total Uses - Loan = Equity
+    ws[f'B{row}'] = '=Total_Uses-Loan_Amount'  # Total Uses - Loan = Equity (will reference named range)
     ws[f'B{row}'].number_format = '$#,##0'
     add_named_range(ws, f"B${row}", "Total_Equity")
     row += 1
@@ -1038,8 +1038,8 @@ def build_annual_cashflow_tab(ws):
     for year in range(0, 11):
         col = year + 2
         if year == 0:
-            # Year 0: -Equity investment + NCF
-            ws.cell(row, col, f'=-Total_Equity+{get_column_letter(col)}{ncf_row}')
+            # Year 0: Negative equity investment only (no operating cash flow in acquisition year)
+            ws.cell(row, col, '=-Total_Equity')
         else:
             # Check if this is the hold period year for sale proceeds
             ws.cell(row, col, f'=IF({year}=Hold_Period,{get_column_letter(col)}{ncf_row}+{get_column_letter(col)}{sale_proceeds_row},{get_column_letter(col)}{ncf_row})')
@@ -1063,10 +1063,10 @@ def build_annual_cashflow_tab(ws):
 
     ws[f'A{row}'] = "Levered IRR"
     ws[f'A{row}'].font = BOLD_FONT
-    # Use IRR function on cash flows from Year 0 through Hold_Period
-    # OFFSET creates dynamic range: start at B{total_cf_row}, include (Hold_Period+1) columns
-    # Include 0.1 (10%) as initial guess to help convergence with multiple sign changes
-    ws[f'B{row}'] = f'=IRR(OFFSET(B{total_cf_row},0,0,1,Hold_Period+1),0.1)'
+    # Use simple IRR function on cash flows from Year 0 through Year 10
+    # This is more reliable than OFFSET and works with variable hold periods via the IF statements
+    # IFERROR wrapper provides graceful error handling if IRR fails to converge
+    ws[f'B{row}'] = f'=IFERROR(IRR(B{total_cf_row}:L{total_cf_row}),"#N/A - Check cash flows")'
     ws[f'B{row}'].number_format = '0.0%'
     ws[f'B{row}'].font = BOLD_FONT
     ws[f'B{row}'].fill = POSITIVE_FILL

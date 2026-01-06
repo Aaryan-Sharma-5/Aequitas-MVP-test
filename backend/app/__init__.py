@@ -79,6 +79,10 @@ def create_app(test_config=None):
     from .api.v1.risk_assessment_routes import risk_assessment_bp
     app.register_blueprint(risk_assessment_bp, url_prefix='/api/v1')
 
+    # Property scraping API
+    from .api.v1.scraping_routes import scraping_bp
+    app.register_blueprint(scraping_bp, url_prefix='/api/v1')
+
     # Serve frontend (only in production/Docker)
     if in_docker:
         @app.route('/', defaults={'path': ''})

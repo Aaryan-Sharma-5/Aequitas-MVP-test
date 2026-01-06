@@ -3,7 +3,7 @@ Database configuration and models for Aequitas MVP
 """
 from datetime import datetime, date
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Date, ForeignKey, Boolean
 from sqlalchemy.sql import func
 
 db = SQLAlchemy()
@@ -1226,4 +1226,134 @@ class GPPortfolioSummaryModel(db.Model):
             quartile=data.get('quartile'),
             deal_count=data.get('dealCount'),
             percentage=data.get('percentage')
+        )
+
+
+class PropertyImportModel(db.Model):
+    """
+    SQLAlchemy model for property imports from external URLs
+    Stores import metadata and extracted data for web scraping operations
+    """
+    __tablename__ = 'property_imports'
+
+    # Primary Key
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    deal_id = Column(Integer, ForeignKey('deals.id'), nullable=True)
+
+    # Source Information
+    source_url = Column(String(1000), nullable=False)
+    source_platform = Column(String(50))
+    import_status = Column(String(50), default='pending', nullable=False)
+    import_method = Column(String(50))
+
+    # Timestamps
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Extracted Data (JSON stored as text)
+    raw_html = Column(Text)
+    extracted_data = Column(Text)
+    enrichment_data = Column(Text)
+
+    # Extraction Results - Address
+    property_address = Column(String(500))
+    city = Column(String(100))
+    state = Column(String(2))
+    zipcode = Column(String(10))
+    latitude = Column(Float)
+    longitude = Column(Float)
+
+    # Property Details Extracted
+    price = Column(Float)
+    square_footage = Column(Integer)
+    units = Column(Integer)
+    bedrooms = Column(Integer)
+    bathrooms = Column(Float)
+    year_built = Column(Integer)
+    property_type = Column(String(100))
+
+    # Financials Extracted
+    noi = Column(Float)
+    cap_rate = Column(Float)
+    gross_income = Column(Float)
+
+    # Error Tracking
+    error_message = Column(Text)
+    error_type = Column(String(50))
+
+    # Metadata
+    user_assisted = Column(Boolean, default=False)
+    confidence_score = Column(Float)
+
+    def __repr__(self):
+        return f'<PropertyImport {self.id}: {self.source_platform} {self.import_status}>'
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'dealId': self.deal_id,
+            'sourceUrl': self.source_url,
+            'sourcePlatform': self.source_platform,
+            'importStatus': self.import_status,
+            'importMethod': self.import_method,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
+            'rawHtml': self.raw_html,
+            'extractedData': self.extracted_data,
+            'enrichmentData': self.enrichment_data,
+            'propertyAddress': self.property_address,
+            'city': self.city,
+            'state': self.state,
+            'zipcode': self.zipcode,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'price': self.price,
+            'squareFootage': self.square_footage,
+            'units': self.units,
+            'bedrooms': self.bedrooms,
+            'bathrooms': self.bathrooms,
+            'yearBuilt': self.year_built,
+            'propertyType': self.property_type,
+            'noi': self.noi,
+            'capRate': self.cap_rate,
+            'grossIncome': self.gross_income,
+            'errorMessage': self.error_message,
+            'errorType': self.error_type,
+            'userAssisted': self.user_assisted,
+            'confidenceScore': self.confidence_score
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Create a PropertyImportModel instance from a dictionary"""
+        return PropertyImportModel(
+            deal_id=data.get('dealId'),
+            source_url=data.get('sourceUrl'),
+            source_platform=data.get('sourcePlatform'),
+            import_status=data.get('importStatus', 'pending'),
+            import_method=data.get('importMethod'),
+            raw_html=data.get('rawHtml'),
+            extracted_data=data.get('extractedData'),
+            enrichment_data=data.get('enrichmentData'),
+            property_address=data.get('propertyAddress'),
+            city=data.get('city'),
+            state=data.get('state'),
+            zipcode=data.get('zipcode'),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            price=data.get('price'),
+            square_footage=data.get('squareFootage'),
+            units=data.get('units'),
+            bedrooms=data.get('bedrooms'),
+            bathrooms=data.get('bathrooms'),
+            year_built=data.get('yearBuilt'),
+            property_type=data.get('propertyType'),
+            noi=data.get('noi'),
+            cap_rate=data.get('capRate'),
+            gross_income=data.get('grossIncome'),
+            error_message=data.get('errorMessage'),
+            error_type=data.get('errorType'),
+            user_assisted=data.get('userAssisted', False),
+            confidence_score=data.get('confidenceScore')
         )
