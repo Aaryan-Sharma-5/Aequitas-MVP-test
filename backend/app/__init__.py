@@ -22,9 +22,16 @@ def create_app(test_config=None):
     logger.info("STARTING CREATE_APP")
     logger.info("=" * 60)
     
-    # Detect if running in Docker (production)
-    in_docker = os.path.exists('/.dockerenv')
-    logger.info(f"Running in Docker: {in_docker}")
+    # Detect if running in production (Docker/Render)
+    # Check for /.dockerenv OR Render-specific env vars OR RENDER env var
+    in_docker = (
+        os.path.exists('/.dockerenv') or 
+        os.environ.get('RENDER') == 'true' or
+        os.environ.get('RENDER_SERVICE_NAME') is not None
+    )
+    logger.info(f"Running in Docker/Production: {in_docker}")
+    logger.info(f"RENDER env var: {os.environ.get('RENDER')}")
+    logger.info(f"RENDER_SERVICE_NAME: {os.environ.get('RENDER_SERVICE_NAME')}")
 
     # Set static folder to frontend dist if in production
     if in_docker:
