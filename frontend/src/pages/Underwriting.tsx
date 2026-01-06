@@ -478,7 +478,7 @@ const Underwriting = () => {
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium text-sm transition-colors"
           >
-            Import URL
+            Import Details
           </button>
           <button
             onClick={handleExportExcel}
