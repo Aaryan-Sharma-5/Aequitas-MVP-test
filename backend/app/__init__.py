@@ -14,6 +14,10 @@ def create_app(test_config=None):
     # Set static folder to frontend dist if in production
     if in_docker:
         static_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'frontend', 'dist'))
+        print(f"Running in Docker, static_folder set to: {static_folder}")
+        print(f"Static folder exists: {os.path.exists(static_folder)}")
+        if os.path.exists(static_folder):
+            print(f"Files in static folder: {os.listdir(static_folder)}")
         app = Flask(__name__,
                     instance_relative_config=True,
                     static_folder=static_folder,
@@ -88,13 +92,20 @@ def create_app(test_config=None):
 
     # Serve frontend (only in production/Docker)
     if in_docker:
+        print(f"Registering frontend catch-all route, static_folder: {app.static_folder}")
+        
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
         def serve_frontend(path):
             """Serve React frontend, fallback to index.html for client-side routing"""
+            print(f"Frontend route called with path: '{path}'")
             if path and os.path.exists(os.path.join(app.static_folder, path)):
+                print(f"Serving file: {path}")
                 return send_from_directory(app.static_folder, path)
             else:
+                print(f"Serving index.html for path: '{path}'")
+                index_path = os.path.join(app.static_folder, 'index.html')
+                print(f"Index.html path: {index_path}, exists: {os.path.exists(index_path)}")
                 return send_from_directory(app.static_folder, 'index.html')
 
     return app
