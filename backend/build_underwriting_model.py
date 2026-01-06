@@ -132,9 +132,34 @@ def build_assumptions_tab(ws, data=None):
         # Remove timezone info for Excel compatibility
         acq_date = acq_date.replace(tzinfo=None)
     add_input_row(ws, row, "Acquisition Date", acq_date, "B", num_format='mm/dd/yyyy'); row += 1
+    row += 1
+
+    # Construction Cost - dual input (percentage and dollar amount)
+    add_input_row(ws, row, "Construction Cost % (Default: 10%)", data.get('constructionCostPct', 0.10), "B", num_format='0.0%', name="Construction_Cost_Pct"); row += 1
+    ws[f'A{row}'] = "Construction Cost $"
+    ws[f'B{row}'] = '=Purchase_Price*Construction_Cost_Pct'
+    ws[f'B{row}'].number_format = '$#,##0'
+    ws[f'B{row}'].fill = INPUT_FILL
+    ws[f'B{row}'].border = THIN_BORDER
+    ws[f'A{row}'].font = Font(name='Calibri', size=11, italic=True)  # Italic to show it's calculated but editable
+    add_named_range(ws, f'B${row}', "Construction_Cost_Amount")
+    row += 1
+    row += 1
 
     add_input_row(ws, row, "Earnest Money %", data.get('earnestMoneyPct', 0.02), "B", num_format='0.0%'); row += 1
-    add_input_row(ws, row, "Closing Costs %", data.get('closingCostsPct', 0.03), "B", num_format='0.0%', name="Closing_Costs_Pct"); row += 1
+
+    # Closing Costs - dual input (percentage and dollar amount)
+    add_input_row(ws, row, "Closing Costs % (Default: 3%)", data.get('closingCostsPct', 0.03), "B", num_format='0.0%', name="Closing_Costs_Pct"); row += 1
+    ws[f'A{row}'] = "Closing Costs $"
+    ws[f'B{row}'] = '=Purchase_Price*Closing_Costs_Pct'
+    ws[f'B{row}'].number_format = '$#,##0'
+    ws[f'B{row}'].fill = INPUT_FILL
+    ws[f'B{row}'].border = THIN_BORDER
+    ws[f'A{row}'].font = Font(name='Calibri', size=11, italic=True)  # Italic to show it's calculated but editable
+    add_named_range(ws, f'B${row}', "Closing_Costs_Amount")
+    row += 1
+    row += 1
+
     add_input_row(ws, row, "Due Diligence Costs", data.get('dueDiligenceCosts', 50000), "B", num_format='$#,##0', name="Due_Diligence"); row += 1
     row += 1
 
@@ -142,11 +167,11 @@ def build_assumptions_tab(ws, data=None):
     ws[f'A{row}'] = "UNIT MIX"
     ws[f'A{row}'].font = HEADER_FONT
     ws[f'A{row}'].fill = HEADER_FILL
-    ws.merge_cells(f'A{row}:F{row}')
+    ws.merge_cells(f'A{row}:E{row}')
     row += 1
 
     # Unit mix table header
-    headers = ['Unit Type', 'Count', 'Avg SF', 'Current Rent', 'Market Rent', 'Reno Cost/Unit']
+    headers = ['Unit Type', 'Count', 'Avg SF', 'Current Rent', 'Market Rent']
     for col_idx, header in enumerate(headers, start=1):
         cell = ws.cell(row, col_idx, header)
         cell.font = BOLD_FONT
@@ -156,11 +181,11 @@ def build_assumptions_tab(ws, data=None):
 
     # Unit mix data - use from data or defaults
     unit_mix_data = data.get('unitMix', [
-        {'unitType': 'Studio', 'count': 10, 'avgSf': 500, 'currentRent': 1100, 'marketRent': 1300, 'renovationCostPerUnit': 6000},
-        {'unitType': '1BR/1BA', 'count': 30, 'avgSf': 700, 'currentRent': 1400, 'marketRent': 1700, 'renovationCostPerUnit': 7000},
-        {'unitType': '2BR/1BA', 'count': 25, 'avgSf': 900, 'currentRent': 1700, 'marketRent': 2100, 'renovationCostPerUnit': 8000},
-        {'unitType': '2BR/2BA', 'count': 25, 'avgSf': 1000, 'currentRent': 1900, 'marketRent': 2400, 'renovationCostPerUnit': 9000},
-        {'unitType': '3BR/2BA', 'count': 10, 'avgSf': 1200, 'currentRent': 2200, 'marketRent': 2700, 'renovationCostPerUnit': 10000}
+        {'unitType': 'Studio', 'count': 10, 'avgSf': 500, 'currentRent': 1100, 'marketRent': 1300},
+        {'unitType': '1BR/1BA', 'count': 30, 'avgSf': 700, 'currentRent': 1400, 'marketRent': 1700},
+        {'unitType': '2BR/1BA', 'count': 25, 'avgSf': 900, 'currentRent': 1700, 'marketRent': 2100},
+        {'unitType': '2BR/2BA', 'count': 25, 'avgSf': 1000, 'currentRent': 1900, 'marketRent': 2400},
+        {'unitType': '3BR/2BA', 'count': 10, 'avgSf': 1200, 'currentRent': 2200, 'marketRent': 2700}
     ])
 
     # Convert to list of tuples if it's a list of dicts
@@ -172,8 +197,7 @@ def build_assumptions_tab(ws, data=None):
                 unit.get('count', 0),
                 unit.get('avgSf', 0),
                 unit.get('currentRent', 0),
-                unit.get('marketRent', 0),
-                unit.get('renovationCostPerUnit', 0)
+                unit.get('marketRent', 0)
             ))
         else:
             unit_types.append(unit)
@@ -188,7 +212,7 @@ def build_assumptions_tab(ws, data=None):
                 cell.fill = INPUT_FILL
                 if col_idx in [2, 3]:  # Count, Avg SF
                     cell.number_format = '#,##0'
-                elif col_idx in [4, 5, 6]:  # Rents and reno cost
+                elif col_idx in [4, 5]:  # Rents
                     cell.number_format = '$#,##0'
             cell.border = THIN_BORDER
         row += 1
@@ -226,13 +250,6 @@ def build_assumptions_tab(ws, data=None):
     cell.number_format = '$#,##0'
     cell.border = THIN_BORDER
     add_named_range(ws, f'E${row}', "Avg_Market_Rent")
-
-    # Total renovation cost
-    cell = ws.cell(row, 6, f'=SUMPRODUCT(B{unit_mix_start_row}:B{unit_mix_end_row},F{unit_mix_start_row}:F{unit_mix_end_row})')
-    cell.font = BOLD_FONT
-    cell.number_format = '$#,##0'
-    cell.border = THIN_BORDER
-    add_named_range(ws, f'F${row}', "Total_Unit_Reno_Cost")
     row += 2
 
     # === CURRENT OPERATIONS (T12) ===
@@ -351,25 +368,24 @@ def build_assumptions_tab(ws, data=None):
     ws[f'B{row}'].fill = CALC_FILL
     row += 2
 
-    # === RENOVATION BUDGET ===
-    ws[f'A{row}'] = "RENOVATION BUDGET"
+    # === CONSTRUCTION/RENOVATION BUDGET ===
+    ws[f'A{row}'] = "CONSTRUCTION/RENOVATION BUDGET"
     ws[f'A{row}'].font = HEADER_FONT
     ws[f'A{row}'].fill = HEADER_FILL
     ws.merge_cells(f'A{row}:D{row}')
     row += 1
 
-    ws[f'A{row}'] = "Per-Unit Interior (from Unit Mix)"
-    ws[f'B{row}'] = '=Total_Unit_Reno_Cost'
+    ws[f'A{row}'] = "Base Construction Cost"
+    ws[f'B{row}'] = '=Construction_Cost_Amount'
     ws[f'B{row}'].number_format = '$#,##0'
     ws[f'B{row}'].fill = CALC_FILL
     row += 1
 
     reno_budget = data.get('renovationBudget', {})
-    add_input_row(ws, row, "Common Area/Exterior", reno_budget.get('commonAreaExterior', 100000), "B", num_format='$#,##0', name="Common_Area_Reno"); row += 1
-    add_input_row(ws, row, "Contingency %", reno_budget.get('contingencyPct', 0.10), "B", num_format='0.0%', name="Reno_Contingency_Pct"); row += 1
+    add_input_row(ws, row, "Contingency % (Default: 10%)", reno_budget.get('contingencyPct', 0.10), "B", num_format='0.0%', name="Reno_Contingency_Pct"); row += 1
 
     ws[f'A{row}'] = "Total Renovation Budget"
-    ws[f'B{row}'] = '=(Total_Unit_Reno_Cost+Common_Area_Reno)*(1+Reno_Contingency_Pct)'
+    ws[f'B{row}'] = '=Construction_Cost_Amount*(1+Reno_Contingency_Pct)'
     ws[f'B{row}'].number_format = '$#,##0'
     ws[f'B{row}'].fill = CALC_FILL
     ws[f'B{row}'].font = BOLD_FONT
@@ -523,7 +539,7 @@ def build_sources_uses_tab(ws):
     row += 1
 
     ws[f'A{row}'] = "  Closing Costs"
-    ws[f'B{row}'] = '=Purchase_Price*Closing_Costs_Pct'
+    ws[f'B{row}'] = '=Closing_Costs_Amount'
     ws[f'B{row}'].number_format = '$#,##0'
     row += 1
 
@@ -1140,7 +1156,7 @@ def main():
 
     wb = create_underwriting_model()
 
-    output_path = "/Users/Helmy_LCollins/Desktop/Aequitas_Multifamily_Underwriting_Model_v1.0.xlsx"
+    output_path = "/Users/rajvardhan/Desktop/Projects/Aequitas-MVP/backend/Aequitas_Multifamily_Underwriting_Model_v1.0.xlsx"
     wb.save(output_path)
 
     print(f"✓ Excel model created successfully!")

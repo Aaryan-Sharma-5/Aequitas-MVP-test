@@ -77,7 +77,9 @@ const Underwriting = () => {
   const [location, setLocation] = useState('Sacramento, CA');
   const [totalUnits, setTotalUnits] = useState(200);
   const [purchasePrice, setPurchasePrice] = useState(15000000);
-  const [constructionCost, setConstructionCost] = useState(100000);
+  const [constructionCostPct, setConstructionCostPct] = useState(10); // percentage
+  const [constructionCost, setConstructionCost] = useState(purchasePrice * 0.10);
+  const [closingCostsPct, setClosingCostsPct] = useState(3); // percentage
   const [closingCosts, setClosingCosts] = useState(purchasePrice * 0.03);
   const [avgMonthlyRent, setAvgMonthlyRent] = useState(1200);
   const [operatingExpenseRatio, setOperatingExpenseRatio] = useState(0.35);
@@ -100,10 +102,14 @@ const Underwriting = () => {
   const [showComparables, setShowComparables] = useState(false);
   const [comparables, setComparables] = useState<RentalComparable[]>([]);
 
-  // Auto-update closing costs when purchase price changes
+  // Auto-update construction cost and closing costs when purchase price or percentages change
   useEffect(() => {
-    setClosingCosts(purchasePrice * 0.03);
-  }, [purchasePrice]);
+    setConstructionCost(purchasePrice * (constructionCostPct / 100));
+  }, [purchasePrice, constructionCostPct]);
+
+  useEffect(() => {
+    setClosingCosts(purchasePrice * (closingCostsPct / 100));
+  }, [purchasePrice, closingCostsPct]);
 
   // Fetch current mortgage rates on mount
   useEffect(() => {
@@ -332,7 +338,8 @@ const Underwriting = () => {
         purchasePrice: purchasePrice,
         acquisitionDate: new Date().toISOString(),
         earnestMoneyPct: 0.02,
-        closingCostsPct: closingCosts / purchasePrice,
+        constructionCostPct: constructionCostPct / 100,
+        closingCostsPct: closingCostsPct / 100,
         dueDiligenceCosts: 50000,
 
         // Generate basic unit mix from total units
@@ -598,21 +605,41 @@ const Underwriting = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Construction Cost ($)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Construction Cost % <span className="text-gray-400">(Default: 10%)</span></label>
               <input
                 type="number"
-                value={constructionCost}
-                onChange={(e) => setConstructionCost(Number(e.target.value) || 0)}
+                step="0.1"
+                value={constructionCostPct}
+                onChange={(e) => setConstructionCostPct(Number(e.target.value) || 0)}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Closing Costs ($)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Construction Cost ($) <span className="text-gray-400 italic">- Auto-calculated</span></label>
+              <input
+                type="number"
+                value={constructionCost}
+                onChange={(e) => setConstructionCost(Number(e.target.value) || 0)}
+                className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Closing Costs % <span className="text-gray-400">(Default: 3%)</span></label>
+              <input
+                type="number"
+                step="0.1"
+                value={closingCostsPct}
+                onChange={(e) => setClosingCostsPct(Number(e.target.value) || 0)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Closing Costs ($) <span className="text-gray-400 italic">- Auto-calculated</span></label>
               <input
                 type="number"
                 value={closingCosts}
                 onChange={(e) => setClosingCosts(Number(e.target.value) || 0)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               />
             </div>
             <div>
