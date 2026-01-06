@@ -211,6 +211,37 @@ const Underwriting = () => {
   // Create deal from imported property data and load it
   const handleImportCreateDeal = async (data: any) => {
     try {
+      // Directly populate the form fields from extracted data
+      if (data.propertyName) {
+        setDealName(data.propertyName);
+      } else if (data.address) {
+        setDealName(`Deal - ${data.address}`);
+      }
+
+      if (data.city && data.state) {
+        setLocation(`${data.city}, ${data.state}`);
+      } else if (data.city) {
+        setLocation(data.city);
+      } else if (data.address) {
+        setLocation(data.address);
+      }
+
+      if (data.askingPrice) {
+        setPurchasePrice(data.askingPrice);
+      }
+
+      if (data.numUnits) {
+        setTotalUnits(data.numUnits);
+      }
+
+      if (data.estimatedRent) {
+        setAvgMonthlyRent(data.estimatedRent);
+      }
+
+      if (data.capRate) {
+        setExitCapRate(data.capRate / 100); // Convert percentage to decimal
+      }
+
       // Map extracted property data to Deal create shape
       const createPayload: Partial<Deal> = {
         dealName: data.propertyName || `Deal - ${data.address || data.city || 'Imported'}`,
@@ -219,16 +250,19 @@ const Underwriting = () => {
         propertyAddress: data.address,
         latitude: data.latitude,
         longitude: data.longitude,
+        purchasePrice: data.askingPrice || undefined,
         monthlyRent: data.estimatedRent || undefined,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
-        squareFootage: data.buildingSizeSf
+        squareFootage: data.buildingSizeSf,
+        yearBuilt: data.yearBuilt,
+        propertyType: data.propertyType,
+        capRate: data.capRate
       };
 
       const created = await dealApi.createDeal(createPayload);
       if (created && created.id) {
-        // Load the newly created deal into the underwriting page
-        loadDeal(created.id);
+        setCurrentDealId(created.id);
       }
     } catch (err) {
       console.error('Error creating deal from imported property:', err);
