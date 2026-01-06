@@ -12,7 +12,7 @@ COPY frontend/package*.json ./
 RUN npm install -g npm@11
 
 # Install dependencies
-RUN npm ci -
+RUN npm ci 
 
 # Copy frontend source
 COPY frontend/ ./
